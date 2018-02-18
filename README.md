@@ -32,5 +32,6 @@ This is an ember data adapter for the Prismic CMS, there are many incomplete pro
   export default PrismicSerializer.extend({});
 ```
 
+------------------------------------------------------------------------------
 
-## Add
+This project is licensed under the [MIT License](LICENSE.md).
