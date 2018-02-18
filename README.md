@@ -1,26 +1,36 @@
-# ember-data-prismic
+# Ember Data Adapter For Prismic CMS
+This is an ember data adapter for the Prismic CMS, there are many incomplete projects like this one, but this one actually works.
 
-This README outlines the details of collaborating on this Ember addon.
+# Usage
 
-## Installation
+#### Install
+`ember install ember-data-prismic`
 
-* `git clone <repository-url>` this repository
-* `cd ember-data-prismic`
-* `npm install`
+##### Environment
+```javascript
+  //config/environment.js
 
-## Running
+  prismic: {
+    apiEndpoint: YOUR_PRISMIC_API_ENDPOINT,
+    accessToken: YOUR_PRISMIC_ACCESS_TOKEN
+  },
+```
 
-* `ember serve`
-* Visit your app at [http://localhost:4200](http://localhost:4200).
+##### Adapter
+```javascript
+  // adapters/application.js
 
-## Running Tests
+  import PrismicAdapter from 'ember-data-prismic/adapters/prismic';
+  export default PrismicAdapter.extend({});
+```
 
-* `npm test` (Runs `ember try:each` to test your addon against multiple Ember versions)
-* `ember test`
-* `ember test --server`
+##### Serializer
+```javascript
 
-## Building
+  // serializers/application.js
+  import PrismicSerializer from 'ember-data-prismic/serializers/prismic';
+  export default PrismicSerializer.extend({});
+```
 
-* `ember build`
 
-For more information on using ember-cli, visit [https://ember-cli.com/](https://ember-cli.com/).
+## Add
