@@ -1,8 +1,11 @@
 import Route from '@ember/routing/route';
-import { get } from '@ember/object';
 
 export default Route.extend({
   model(params) {
-    return this.store.findRecord('post', params.id);
+    return this.store.queryRecord('post', {uid: params.post_id});
+  },
+
+  afterModel(model, transition) {
+    this.transitionTo('post', model.get('id'));
   }
 });

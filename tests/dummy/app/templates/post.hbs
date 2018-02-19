@@ -2,14 +2,14 @@
 
 {{#with model as |post|}}
 <div class="post">
-  <h2 class="post-title">{{link-to post.title 'post' post.uid}}</h2>
+  <h2 class="post-title">{{link-to post.title 'post' post}}</h2>
   <div class="post-byline">
     {{post.author.firstName}}
     {{#with post.author as |author|}}
-      {{link-to author.firstName 'author' author.uid}}
+      {{link-to author.firstName 'author' author}}
     {{/with}}
 
-    {{prismic-as-text post.author.bio}}
+    {{prismic-text post.author.bio}}
 
   </div>
   <div class="post-body">

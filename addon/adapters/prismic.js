@@ -5,7 +5,7 @@ import { get } from '@ember/object';
 import Prismic from 'prismic-javascript';
 import { underscore } from '@ember/string';
 
-export default DS.Adapter.extend({
+export default DS.RESTAdapter.extend({
   prismic: inject(),
   host: config.prismic.apiEndpoint,
   defaultSerializer: 'prismic',
@@ -169,10 +169,16 @@ export default DS.Adapter.extend({
     @public
   */
   queryRecord(store, type, query) {
-    // query = query || {};
-    // query['content_type'] = this.contentTypeParam(type.modelName);
-    // query['limit'] = 1;
-    // query['skip'] = 0;
-    // return this._getContent('entries', query);
+    return get(this, 'prismic').getApi(this.host).then(api => {
+      // return api.query([
+        // Prismic.Predicates.at('document.type', type.modelName)
+      // ]);
+      return api.query([
+        Prismic.Predicates.at(`my.${type.modelName}.uid`, query.uid),
+        Prismic.Predicates.at('document.type', type.modelName)
+      ], {
+        fetchLinks: this.fetchLinkRequestParams(store, type)
+      });
+    })
   },
 });

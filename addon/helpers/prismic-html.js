@@ -9,7 +9,7 @@ export default Helper.extend({
   compute(params/*, hash*/) {
     return htmlSafe(RichText.asHtml(params[0], (doc) => {
       let router = get(this, 'router');
-      return router.urlFor(doc.type, doc.id);
+      return router.urlFor(doc.type, doc.uid);
     }));
   }
 });

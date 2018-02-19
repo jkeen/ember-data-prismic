@@ -2,6 +2,7 @@ import DS from 'ember-data';
 import Ember from 'ember';
 import { A } from '@ember/array';
 import { underscore } from '@ember/string' ;
+import { assign } from '@ember/polyfills';
 const {
   get,
   isNone,
@@ -13,14 +14,26 @@ export default DS.JSONSerializer.extend({
     return underscore(key);
   },
 
-  extractAttributes(modelClass, fieldsHash, objHash) {
+  extractAttributes(modelClass, objHash) {
     let attributeKey;
     let attributes = {};
+
+    let userFields = this.modelFieldData(objHash);
+    let systemFields = this.systemFieldData(objHash)
+
     modelClass.eachAttribute((key) => {
       attributeKey = this.keyForAttribute(key, 'deserialize');
 
-      if (fieldsHash && fieldsHash.hasOwnProperty(attributeKey)) {
-        let attributeValue = fieldsHash[attributeKey];
+      // These are the user defined fields
+      if (userFields && userFields.hasOwnProperty(attributeKey)) {
+        let attributeValue = userFields[attributeKey];
+        if (typeOf(attributeValue) === 'object') {
+          attributeValue = attributeValue.value;
+        }
+        attributes[key] = attributeValue;
+      }
+      else if (systemFields && systemFields[attributeKey]) {
+        let attributeValue = systemFields[attributeKey];
         if (typeOf(attributeValue) === 'object') {
           attributeValue = attributeValue.value;
         }
@@ -29,20 +42,7 @@ export default DS.JSONSerializer.extend({
     });
 
 
-    // Extract slices
-
-    if (fieldsHash.hasOwnProperty('body') && get(fieldsHash, 'body.type') === 'SliceZone') {
-
-
-    }
-
-    if (objHash) {
-      attributes['contentType']      = objHash['type'];
-      attributes['firstPublishedAt'] = objHash['first_publication_date'];
-      attributes['lastPublishedAt']  = objHash['last_publication_date'];
-      attributes['tags']             = objHash['tags'];
-      attributes['uid']              = objHash['uid'];
-    }
+    attributes['recordId'] = systemFields['id'];
 
     return attributes;
   },
@@ -85,23 +85,23 @@ export default DS.JSONSerializer.extend({
 
       if (relationshipHash.type && !this.modelHasAttributeOrRelationshipNamedType(modelClass)) {
         return {
-          id: relationshipHash.id,
+          id: relationshipHash.uid,
           type: modelClass.modelName
         }
       }
 
       else if (relationshipHash.data) {
           let data = {
-            id: relationshipHash.id,
+            id: relationshipHash.uid,
             type: modelClass.modelName,
-            attributes: this.extractAttributes(modelClass, this.modelFieldData(relationshipHash), relationshipHash),
+            attributes: this.extractAttributes(modelClass, relationshipHash),
             relationships: this.extractRelationships(modelClass, relationshipHash)
           };
           return data;
         }
       }
 
-    return { id: relationshipHash.id, type: relationshipModelName };
+    return { id: relationshipHash.uid, type: relationshipModelName };
   },
 
   modelNameFromPayloadType(sys) {
@@ -117,9 +117,9 @@ export default DS.JSONSerializer.extend({
 
     if (resourceHash) {
       data = {
-        id: resourceHash.id,
+        id: resourceHash.uid,
         type: resourceHash.type,
-        attributes: this.extractAttributes(modelClass, this.modelFieldData(resourceHash), resourceHash),
+        attributes: this.extractAttributes(modelClass, resourceHash),
         relationships: this.extractRelationships(modelClass, resourceHash)
       };
 
@@ -130,8 +130,19 @@ export default DS.JSONSerializer.extend({
   },
 
   modelFieldData(resourceHash) {
-    return resourceHash.data;
-    // return get(resourceHash, `data.${resourceHash.type}`)
+    if (resourceHash && resourceHash.data) {
+      return resourceHash.data;
+    }
+    else {
+      return {};
+    }
+  },
+
+  systemFieldData(resourceHash) {
+    let systemData = {}
+    assign(systemData, resourceHash);
+    delete systemData['data'];
+    return systemData
   },
 
   normalizeResponse(store, primaryModelClass, payload, id, requestType) {
@@ -161,9 +172,8 @@ export default DS.JSONSerializer.extend({
 
   normalizeQueryRecordResponse(store, primaryModelClass, payload, id, requestType) {
     let singlePayload = null;
-    if (parseInt(payload.total) > 0) {
-      singlePayload = payload.items[0];
-      singlePayload.includes = payload.includes;
+    if (parseInt(payload.results_size) > 0) {
+      singlePayload = payload.results[0];
     }
     return this.normalizeSingleResponse(store, primaryModelClass, singlePayload, id, requestType);
   },
@@ -250,19 +260,19 @@ export default DS.JSONSerializer.extend({
   _extractIncludes(store, resourceHash) {
     let included = [];
 
-      let fieldData = this.modelFieldData(resourceHash)
+    let fieldData = this.modelFieldData(resourceHash)
 
-      let linkedDocuments = []
-      A(Object.keys(fieldData)).map(key => {
-        if (get(fieldData, `${key}.link_type`) === 'Document') {
-          linkedDocuments.push(get(fieldData, key));
-        }
-      });
+    let linkedDocuments = []
+    A(Object.keys(fieldData)).map(key => {
+      if (get(fieldData, `${key}.link_type`) === 'Document') {
+        linkedDocuments.push(get(fieldData, key));
+      }
+    });
 
-      linkedDocuments.map(doc => {
-        let normalized = this.normalize(store.modelFor(doc.type), doc)
-        included.push(normalized.data);
-      });
+    linkedDocuments.map(doc => {
+      let normalized = this.normalize(store.modelFor(doc.type), doc)
+      included.push(normalized.data);
+    });
 
     //   modelClass.eachRelationship((key, relationship) => {
     //
