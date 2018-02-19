@@ -1,0 +1,16 @@
+{{#each model as |post|}}
+  <div class="post">
+    <h2 class="post-title">{{link-to post.title 'post' post.uid}}</h2>
+    <div class="post-byline">
+      {{#with post.author as |author|}}
+        by {{link-to author.name 'author' author.uid}}
+
+        {{ prismic-html author.bio }}
+      {{/with}}
+    </div>
+    <div class="post-body">
+
+    </div>
+  </div>
+
+{{/each}}

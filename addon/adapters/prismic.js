@@ -3,6 +3,7 @@ import config from 'ember-get-config';
 import { inject } from '@ember/service';
 import { get } from '@ember/object';
 import Prismic from 'prismic-javascript';
+import { underscore } from '@ember/string';
 
 export default DS.Adapter.extend({
   prismic: inject(),
@@ -10,11 +11,6 @@ export default DS.Adapter.extend({
   defaultSerializer: 'prismic',
 
   /**
-    Currently not implemented as this is adapter only implements the
-    READ ONLY Content Delivery API (https://www.contentful.com/developers/docs/references/content-delivery-api/).
-    For more information on the Content Management API,
-    see https://www.contentful.com/developers/docs/references/content-management-api/
-
     @method createRecord
     @public
   */
@@ -46,6 +42,22 @@ export default DS.Adapter.extend({
     return modelName;
   },
 
+
+  fetchLinkRequestParams(store, type) {
+    let fetchLinks = []
+
+    type.eachRelationship(relationship => {
+      let model = store.modelFactoryFor(relationship);
+      if (model && model.class) {
+        model.class.eachAttribute(attribute => {
+          fetchLinks.push(`${underscore(relationship)}.${underscore(attribute)}`)
+        })
+      }
+    });
+
+    return fetchLinks;
+  },
+
   /**
     Called by the store in order to fetch the JSON for a given
     type and ID.
@@ -62,7 +74,13 @@ export default DS.Adapter.extend({
   */
   findRecord(store, type, id) {
     return get(this, 'prismic').getApi(this.host).then(api => {
-      return api.getByUID(type, id)
+      // return api.query([
+        // Prismic.Predicates.at('document.type', type.modelName)
+      // ]);
+
+      return api.getByUID(type.modelName, id, {
+        fetchLinks: this.fetchLinkRequestParams(store, type)
+      })
     })
   },
 
@@ -99,7 +117,13 @@ export default DS.Adapter.extend({
     @public
   */
   findAll(store, type) {
-    return this._getContent('entries', { 'content_type': this.contentTypeParam(type.modelName) });
+    return get(this, 'prismic').getApi(this.host).then(api => {
+      return api.query([
+        Prismic.Predicates.at('document.type', type.modelName),
+      ], {
+        fetchLinks: this.fetchLinkRequestParams(store, type)
+      });
+    });
   },
 
   /**

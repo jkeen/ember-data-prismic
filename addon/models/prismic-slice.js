@@ -1,13 +1,15 @@
 import Model from 'ember-data/model';
 import attr from 'ember-data/attr';
-import computed from '@ember/computed';
-export default Model.extend({
-  slice_type: attr(),
-  slice_label: attr(),
+import { computed } from '@ember/object';
 
-  type: computed.alias('slice_type'),
-  label: computed.alias('slice_label'),
+export default Model.extend({
+  type: attr(),
+  label: attr(),
 
   items: attr(),
   primary: attr()
+
+
+  // format data automatically using formatter
+
 });
