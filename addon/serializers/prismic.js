@@ -16,7 +16,6 @@ export default DS.JSONSerializer.extend({
   extractAttributes(modelClass, fieldsHash, objHash) {
     let attributeKey;
     let attributes = {};
-debugger
     modelClass.eachAttribute((key) => {
       attributeKey = this.keyForAttribute(key, 'deserialize');
 
@@ -59,8 +58,8 @@ debugger
 
     let relationshipHash = {};
     A(Object.keys(fieldData)).map(key => {
-      if (get(fieldData, `${key}.type`) === 'Link.document') {
-        relationshipHash[key] = get(fieldData, `${key}.value.document`);
+      if (get(fieldData, `${key}.link_type`) === 'Document') {
+        relationshipHash[key] = get(fieldData, key);
       }
     });
 
@@ -78,7 +77,6 @@ debugger
 
 
   extractRelationship(relationshipModelName, relationshipHash) {
-    console.log(`extract relationship ${relationshipModelName}`);
     if (isNone(relationshipHash)) {
       return null;
     }
@@ -132,7 +130,8 @@ debugger
   },
 
   modelFieldData(resourceHash) {
-    return get(resourceHash, `data.${resourceHash.type}`)
+    return resourceHash.data;
+    // return get(resourceHash, `data.${resourceHash.type}`)
   },
 
   normalizeResponse(store, primaryModelClass, payload, id, requestType) {
@@ -250,12 +249,13 @@ debugger
 
   _extractIncludes(store, resourceHash) {
     let included = [];
+
       let fieldData = this.modelFieldData(resourceHash)
 
       let linkedDocuments = []
       A(Object.keys(fieldData)).map(key => {
-        if (get(fieldData, `${key}.type`) === 'Link.document') {
-          linkedDocuments.push(get(fieldData, `${key}.value.document`));
+        if (get(fieldData, `${key}.link_type`) === 'Document') {
+          linkedDocuments.push(get(fieldData, key));
         }
       });
 
