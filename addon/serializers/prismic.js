@@ -3,6 +3,8 @@ import Ember from 'ember';
 import { A } from '@ember/array';
 import { underscore } from '@ember/string' ;
 import { assign } from '@ember/polyfills';
+import { isArray } from '@ember/array';
+
 const {
   get,
   isNone,

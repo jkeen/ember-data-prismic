@@ -7,5 +7,6 @@ export default Prismic.extend({
   name: computed('firstName', 'lastName', function() {
     return [get(this, 'firstName'), get(this, 'lastName')].join(" ");
   }),
+  photo: attr('prismic-object'),
   bio: attr('prismic-object')
 });
