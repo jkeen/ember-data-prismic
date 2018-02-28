@@ -12,9 +12,22 @@ const {
 } = Ember;
 
 export default DS.JSONSerializer.extend({
+  // attrs: {
+  //   'body': 'slice'
+  // },
+
   keyForAttribute(key, /* relationship, method */) {
     return underscore(key);
   },
+  //
+  // keyForRelationship(key) {
+  //   if (key === 'slices') {
+  //     return 'body';
+  //   }
+  //   else {
+  //     return key;
+  //   }
+  // },
 
   extractAttributes(modelClass, objHash) {
     let attributeKey;
@@ -29,16 +42,16 @@ export default DS.JSONSerializer.extend({
       // These are the user defined fields
       if (userFields && userFields.hasOwnProperty(attributeKey)) {
         let attributeValue = userFields[attributeKey];
-        if (typeOf(attributeValue) === 'object') {
-          attributeValue = attributeValue.value;
-        }
+        // if (typeOf(attributeValue) === 'object') {
+        //   attributeValue = attributeValue.value;
+        // }
         attributes[key] = attributeValue;
       }
       else if (systemFields && systemFields[attributeKey]) {
         let attributeValue = systemFields[attributeKey];
-        if (typeOf(attributeValue) === 'object') {
-          attributeValue = attributeValue.value;
-        }
+        // if (typeOf(attributeValue) === 'object') {
+        //   attributeValue = attributeValue.value;
+        // }
         attributes[key] = attributeValue;
       }
     });
@@ -63,13 +76,16 @@ export default DS.JSONSerializer.extend({
       if (get(fieldData, `${key}.link_type`) === 'Document') {
         relationshipHash[key] = get(fieldData, key);
       }
+      else if (key === 'body' && this.isSliceData(get(fieldData, key))) {
+        relationshipHash[this.keyForRelationship(key)] = get(fieldData, key);
+      }
     });
 
     modelClass.eachRelationship((key, relationshipMeta) => {
       let relationshipKey = this.keyForRelationship(key, relationshipMeta.kind, 'deserialize');
       if (relationshipHash[relationshipKey] !== undefined) {
         relationships[key] = {
-          data: this.extractRelationship(key, relationshipHash[relationshipKey])
+          data: this.extractRelationship(key, relationshipHash[relationshipKey], resourceHash)
         };
       }
     });
@@ -78,7 +94,7 @@ export default DS.JSONSerializer.extend({
   },
 
 
-  extractRelationship(relationshipModelName, relationshipHash) {
+  extractRelationship(relationshipModelName, relationshipHash, objectData) {
     if (isNone(relationshipHash)) {
       return null;
     }
@@ -93,17 +109,26 @@ export default DS.JSONSerializer.extend({
       }
 
       else if (relationshipHash.data) {
-          let data = {
-            id: relationshipHash.uid,
-            type: modelClass.modelName,
-            attributes: this.extractAttributes(modelClass, relationshipHash),
-            relationships: this.extractRelationships(modelClass, relationshipHash)
-          };
-          return data;
-        }
+        let data = {
+          id: relationshipHash.uid,
+          type: modelClass.modelName,
+          attributes: this.extractAttributes(modelClass, relationshipHash),
+          relationships: this.extractRelationships(modelClass, relationshipHash)
+        };
+        return data;
       }
 
-    return { id: relationshipHash.uid, type: relationshipModelName };
+      return { id: relationshipHash.uid, type: relationshipModelName };
+    }
+    else if (typeOf(relationshipHash) === 'array' && this.isSliceData(relationshipHash)) {
+      return relationshipHash.map((slice, index) => {
+
+        let id = `${objectData.id}_s${index}`;
+        return { id, type: 'prismic-slice' }
+      })
+    }
+
+
   },
 
   modelNameFromPayloadType(sys) {
@@ -116,7 +141,6 @@ export default DS.JSONSerializer.extend({
 
   normalize(modelClass, resourceHash) {
     let data = null;
-
     if (resourceHash) {
       data = {
         id: resourceHash.uid,
@@ -129,6 +153,10 @@ export default DS.JSONSerializer.extend({
     }
 
     return { data };
+  },
+
+  isSliceData(resources) {
+    return (isArray(resources) && resources.length > 0 && resources[0].slice_type !== undefined)
   },
 
   modelFieldData(resourceHash) {
@@ -203,7 +231,7 @@ export default DS.JSONSerializer.extend({
   normalizeSingleResponse(store, primaryModelClass, payload, id, requestType) {
     let response = {
       data: this.normalize(primaryModelClass, payload).data,
-      included: this._extractIncludes(store, payload)
+      included: this.extractIncludes(store, payload)
     };
 
     console.log(response);
@@ -211,16 +239,13 @@ export default DS.JSONSerializer.extend({
   },
 
   normalizeArrayResponse(store, primaryModelClass, payload, id, requestType) {
-
-    console.log(payload);
-
     let data = [];
     var included = []
 
     payload.results.map((item) => {
       data.push(this.normalize(primaryModelClass, item).data);
 
-      included = included.concat(this._extractIncludes(store, item))
+      included = included.concat(this.extractIncludes(store, item))
     });
 
     let response =  {
@@ -228,6 +253,7 @@ export default DS.JSONSerializer.extend({
       included: included,
       meta: this.extractMeta(store, primaryModelClass, payload)
     };
+
     console.log(response);
 
     return response;
@@ -259,20 +285,33 @@ export default DS.JSONSerializer.extend({
     }
   },
 
-  _extractIncludes(store, resourceHash) {
+  extractIncludes(store, resourceHash) {
     let included = [];
 
     let fieldData = this.modelFieldData(resourceHash)
-
     let linkedDocuments = []
     A(Object.keys(fieldData)).map(key => {
       if (get(fieldData, `${key}.link_type`) === 'Document') {
         linkedDocuments.push(get(fieldData, key));
       }
+      else if (key === 'body' && this.isSliceData(get(fieldData, key))) {
+
+        let sliceData = get(fieldData, key)
+
+        sliceData.forEach((slice, index) => {
+          linkedDocuments.push({
+            uid: `${resourceHash.id}_s${index}`,
+            type: 'prismic-slice',
+            data: slice
+          });
+        })
+      }
     });
+
 
     linkedDocuments.map(doc => {
       let normalized = this.normalize(store.modelFor(doc.type), doc)
+
       included.push(normalized.data);
     });
 
