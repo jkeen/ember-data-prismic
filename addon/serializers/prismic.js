@@ -2,7 +2,7 @@ import DS from 'ember-data';
 import { A } from '@ember/array';
 import { underscore } from '@ember/string' ;
 import { assign } from '@ember/polyfills';
-import { isArray } from '@ember/array';
+import { isArray, makeArray } from '@ember/array';
 import { get } from '@ember/object';
 import { isNone, typeOf } from '@ember/utils';
 
@@ -15,7 +15,7 @@ export default DS.JSONSerializer.extend({
     let attributeKey;
     let attributes = {};
 
-    let userFields = this.modelFieldData(objHash);
+    let userFields = this.modelFieldData(modelClass, objHash);
     let systemFields = this.systemFieldData(objHash)
 
     modelClass.eachAttribute((key) => {
@@ -87,17 +87,27 @@ export default DS.JSONSerializer.extend({
   },
 
   extractRelationships(modelClass, resourceHash) {
+    let fieldData = this.modelFieldData(modelClass, resourceHash)
     let relationships = {};
-    let fieldData = this.modelFieldData(resourceHash)
-
-    let relationshipHash = this.extractDocumentLinks(fieldData);
+    let relationshipHash = this.extractDocumentLinks(fieldData) || {};
 
     modelClass.eachRelationship((key, relationshipMeta) => {
       let relationshipKey = this.keyForRelationship(key, relationshipMeta.kind, 'deserialize');
-      if (relationshipHash[relationshipKey] !== undefined) {
+      if (relationshipMeta.options.polymorphic) {
+        let allRelated = [];
+        Object.keys(relationshipHash).map(k => {
+          allRelated = allRelated.concat(relationshipHash[k]);
+        });
         relationships[key] = {
-          data: this.extractRelationship(key, relationshipHash[relationshipKey], resourceHash)
+          data: this.extractRelationship(key, allRelated, resourceHash)
         };
+      }
+      else {
+        if (relationshipHash[relationshipKey] !== undefined) {
+          relationships[key] = {
+            data: this.extractRelationship(key, relationshipHash[relationshipKey], resourceHash)
+          };
+        }
       }
     });
 
@@ -111,32 +121,38 @@ export default DS.JSONSerializer.extend({
     }
     if (typeOf(relationshipHash) === 'object') {
       var modelClass = this.store.modelFor(relationshipModelName);
-
-      if (relationshipHash.type && !this.modelHasAttributeOrRelationshipNamedType(modelClass)) {
-        return {
-          id: relationshipHash.uid,
-          type: modelClass.modelName
-        }
+      return {
+        id: relationshipHash.uid,
+        type: modelClass.modelName,
+        attributes: this.extractAttributes(modelClass, relationshipHash),
+        relationships: this.extractRelationships(modelClass, relationshipHash)
       }
-
-      else if (relationshipHash.data) {
-        let data = {
-          id: relationshipHash.uid,
-          type: modelClass.modelName,
-          attributes: this.extractAttributes(modelClass, relationshipHash),
-          relationships: this.extractRelationships(modelClass, relationshipHash)
-        };
-        return data;
-      }
-
-      return { id: relationshipHash.uid, type: relationshipModelName };
     }
-    else if (typeOf(relationshipHash) === 'array' && this.isSliceData(relationshipHash)) {
-      return relationshipHash.map((slice, index) => {
+    else if (typeOf(relationshipHash) === 'array') {
+      if (this.isSliceData(relationshipHash)) {
+        return relationshipHash.map((slice, index) => {
+          var modelClass = this.store.modelFor('prismic-slice');
 
-        let id = `${objectData.id}_s${index}`;
-        return { id, type: 'prismic-slice' }
-      })
+          return {
+            id: `${objectData.id}_s${index}`,
+            type: modelClass.modelName,
+            attributes: this.extractAttributes(modelClass, slice),
+            relationships: this.extractRelationships(modelClass, slice)
+          }
+        })
+      }
+      else {
+        return relationshipHash.map(object => {
+          var modelClass = this.store.modelFor(object.type);
+
+          return {
+            id: object.id,
+            type: modelClass.modelName,
+            attributes: this.extractAttributes(modelClass, object),
+            relationships: this.extractRelationships(modelClass, object)
+          }
+        });
+      }
     }
   },
 
@@ -167,9 +183,12 @@ export default DS.JSONSerializer.extend({
     return (isArray(resources) && resources.length > 0 && resources[0].slice_type !== undefined)
   },
 
-  modelFieldData(resourceHash) {
+  modelFieldData(modelClass, resourceHash) {
     if (resourceHash && resourceHash.data) {
       return resourceHash.data;
+    }
+    else if (modelClass.modelName == 'prismic-slice') {
+      return resourceHash;
     }
     else {
       return {};
@@ -237,10 +256,9 @@ export default DS.JSONSerializer.extend({
   },
 
   normalizeSingleResponse(store, primaryModelClass, payload /* id, requestType */) {
-    let response = {
-      data: this.normalize(primaryModelClass, payload).data,
-      included: this.extractIncludes(store, payload)
-    };
+    let normalizedData = this.normalize(primaryModelClass, payload).data;
+
+    let response =  this.formatResponseData(normalizedData);
 
     return response;
   },
@@ -290,70 +308,73 @@ export default DS.JSONSerializer.extend({
     }
   },
 
-  extractIncludes(store, resourceHash) {
-    let included = [];
+  _nestedRelationships(resourceHash) {
+    let relationships = resourceHash.relationships;
+    let relationshipKeys = Object.keys(relationships);
+    if (relationshipKeys.length === 0) return [];
 
-    let fieldData = this.modelFieldData(resourceHash)
-    let linkedDocuments = []
-    A(Object.keys(fieldData)).map(key => {
-      if (get(fieldData, `${key}.link_type`) === 'Document') {
-        linkedDocuments.push(get(fieldData, key));
-      }
-      else if (key === 'body' && this.isSliceData(get(fieldData, key))) {
-        let sliceData = get(fieldData, key)
-        sliceData.forEach((slice, index) => {
-          linkedDocuments.push({
-            uid: `${resourceHash.id}_s${index}`,
-            type: 'prismic-slice',
-            data: slice
-          });
-        })
-      }
+    let records = []
+    relationshipKeys.map(key => {
+      relationships[key].forEach(record => records.push(record));
     });
 
-    linkedDocuments.map(doc => {
-      let normalized = this.normalize(store.modelFor(doc.type), doc)
+    return records;
+  },
 
-      included.push(normalized.data);
-    });
+  extractIncludes(resourceHash, included = []) {
+    let relationships = resourceHash.relationships;
+    let relationshipKeys = Object.keys(relationships);
+    if (relationshipKeys.length === 0) {
+      // has no relationships, end of the line. push this sucker
+      included.push(resourceHash);
+      return included;
+    }
+    else {
+      relationshipKeys.map(key => {
+        let records = makeArray(relationships[key].data);
 
-    //   modelClass.eachRelationship((key, relationship) => {
-    //
-    //     let relationshipKey = this.keyForRelationship(key, relationshipMeta.kind, 'deserialize');
-    //     if (relationshipHash[relationshipKey] !== undefined) {
-    //       let record = this.normalize(store.modelFor(key), relationshipHash[relationshipKey]);
-    //       included.push(record);
-    //     }
-    //     // if (DEBUG) {
-    //     //   if (resourceHash.relationships[relationshipKey] === undefined && resourceHash.relationships[key] !== undefined) {
-    //     //     assert(`Your payload for '${modelClass.modelName}' contains '${key}', but your serializer is setup to look for '${relationshipKey}'. This is most likely because Ember Data's JSON API serializer dasherizes relationship keys by default. You should subclass JSONAPISerializer and implement 'keyForRelationship(key) { return key; }' to prevent Ember Data from customizing your relationship keys.`, false);
-    //     //   }
-    //     // }
-    //   });
+        records.forEach(record => {
+          this.extractIncludes(record, included);
+        });
+      });
+    }
 
     return included;
+  },
 
-    //
-    //
-    // if(payload && payload.hasOwnProperty('includes')) {
-    //   let entries = new Array();
-    //   let assets = new Array();
-    //
-    //   if (payload.includes.Entry) {
-    //     entries = payload.includes.Entry.map((item) => {
-    //       return this.normalize(store.modelFor(item.sys.contentType.sys.id), item).data;
-    //     });
-    //   }
-    //
-    //   if (payload.includes.Asset) {
-    //     assets = payload.includes.Asset.map((item) => {
-    //       return this.normalize(store.modelFor('contentful-asset'), item).data;
-    //     });
-    //   }
-    //
-    //   return entries.concat(assets);
-    // } else {
-    //   return [];
-    // }
+  removeAttributes(resourceHash, included = []) {
+    delete resourceHash.attributes;
+
+    let relationships = resourceHash.relationships;
+    let relationshipKeys = Object.keys(relationships);
+    relationshipKeys.map(key => {
+      let records = makeArray(relationships[key].data);
+
+      records.forEach(record => {
+        this.removeAttributes(record, included);
+      });
+    });
+
+    return resourceHash;
+  },
+
+
+  formatResponseData(normalizedData) {
+    /* given an normalized data hash, return {
+      data: [passed in data without 'attributes' in relationships]
+      included: [flattened array of all nested relationships]
+    } */
+    let included = this.extractIncludes(normalizedData);
+    let data = this.removeAttributes(normalizedData);
+
+    console.log(normalizedData);
+
+    console.log(included);
+    console.log(data);
+
+    return {
+      data,
+      included
+    }
   }
 });
