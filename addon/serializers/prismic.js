@@ -1,33 +1,15 @@
 import DS from 'ember-data';
-import Ember from 'ember';
 import { A } from '@ember/array';
 import { underscore } from '@ember/string' ;
 import { assign } from '@ember/polyfills';
 import { isArray } from '@ember/array';
-
-const {
-  get,
-  isNone,
-  typeOf
-} = Ember;
+import { get } from '@ember/object';
+import { isNone, typeOf } from '@ember/utils';
 
 export default DS.JSONSerializer.extend({
-  // attrs: {
-  //   'body': 'slice'
-  // },
-
   keyForAttribute(key, /* relationship, method */) {
     return underscore(key);
   },
-  //
-  // keyForRelationship(key) {
-  //   if (key === 'slices') {
-  //     return 'body';
-  //   }
-  //   else {
-  //     return key;
-  //   }
-  // },
 
   extractAttributes(modelClass, objHash) {
     let attributeKey;
@@ -66,12 +48,8 @@ export default DS.JSONSerializer.extend({
     return get(modelClass, 'attributes').has('type') || get(modelClass, 'relationshipsByName').has('type');
   },
 
-
-  extractRelationships(modelClass, resourceHash) {
-    let relationships = {};
-    let fieldData = this.modelFieldData(resourceHash)
-
-    let relationshipHash = {};
+  extractDocumentLinks(fieldData) {
+    let relationshipHash = {}
     A(Object.keys(fieldData)).map(key => {
       if (get(fieldData, `${key}.link_type`) === 'Document') {
         relationshipHash[key] = get(fieldData, key);
@@ -80,6 +58,39 @@ export default DS.JSONSerializer.extend({
         relationshipHash[this.keyForRelationship(key)] = get(fieldData, key);
       }
     });
+
+    if (this.isSlice(fieldData)) {
+      fieldData.items.map(item => {
+        A(Object.keys(item)).map(key => {
+          if (get(item, `${key}.link_type`) === 'Document') {
+            if (!relationshipHash[key]) {
+              relationshipHash[key] = A();
+            }
+            relationshipHash[key].push(get(item, key));
+          }
+        });
+      });
+
+      A(Object.keys(fieldData.primary)).map(key => {
+        if (get(fieldData.primary, `${key}.link_type`) === 'Document') {
+          if (!relationshipHash[key]) {
+            relationshipHash[key] = A();
+          }
+          relationshipHash[key].push(get(fieldData.primary, key));
+        }
+      });
+
+      // assign(relationshipHash, this.extractDocumentLinks(fieldData.primary))
+    }
+
+    return relationshipHash;
+  },
+
+  extractRelationships(modelClass, resourceHash) {
+    let relationships = {};
+    let fieldData = this.modelFieldData(resourceHash)
+
+    let relationshipHash = this.extractDocumentLinks(fieldData);
 
     modelClass.eachRelationship((key, relationshipMeta) => {
       let relationshipKey = this.keyForRelationship(key, relationshipMeta.kind, 'deserialize');
@@ -127,16 +138,6 @@ export default DS.JSONSerializer.extend({
         return { id, type: 'prismic-slice' }
       })
     }
-
-
-  },
-
-  modelNameFromPayloadType(sys) {
-    if (sys.type === "Asset") {
-      return 'contentful-asset';
-    } else {
-      return sys.contentType.sys.id;
-    }
   },
 
   normalize(modelClass, resourceHash) {
@@ -153,6 +154,13 @@ export default DS.JSONSerializer.extend({
     }
 
     return { data };
+  },
+
+  isSlice(resource) {
+
+    let keys = Object.keys(resource)
+
+    return keys.includes('slice_type') && keys.includes('slice_label');
   },
 
   isSliceData(resources) {
@@ -228,17 +236,16 @@ export default DS.JSONSerializer.extend({
     return this.normalizeArrayResponse(...arguments);
   },
 
-  normalizeSingleResponse(store, primaryModelClass, payload, id, requestType) {
+  normalizeSingleResponse(store, primaryModelClass, payload /* id, requestType */) {
     let response = {
       data: this.normalize(primaryModelClass, payload).data,
       included: this.extractIncludes(store, payload)
     };
 
-    console.log(response);
     return response;
   },
 
-  normalizeArrayResponse(store, primaryModelClass, payload, id, requestType) {
+  normalizeArrayResponse(store, primaryModelClass, payload /* id, requestType */ ) {
     let data = [];
     var included = []
 
@@ -253,8 +260,6 @@ export default DS.JSONSerializer.extend({
       included: included,
       meta: this.extractMeta(store, primaryModelClass, payload)
     };
-
-    console.log(response);
 
     return response;
   },
@@ -295,9 +300,7 @@ export default DS.JSONSerializer.extend({
         linkedDocuments.push(get(fieldData, key));
       }
       else if (key === 'body' && this.isSliceData(get(fieldData, key))) {
-
         let sliceData = get(fieldData, key)
-
         sliceData.forEach((slice, index) => {
           linkedDocuments.push({
             uid: `${resourceHash.id}_s${index}`,
@@ -307,7 +310,6 @@ export default DS.JSONSerializer.extend({
         })
       }
     });
-
 
     linkedDocuments.map(doc => {
       let normalized = this.normalize(store.modelFor(doc.type), doc)

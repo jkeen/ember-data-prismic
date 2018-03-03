@@ -143,7 +143,7 @@ export default DS.RESTAdapter.extend({
     @return {Promise} promise
     @public
   */
-  query(store, type, query) {
+  query(store, type /*, query */) {
     return get(this, 'prismic').getApi(this.host).then(api => {
       return api.query([
         Prismic.Predicates.at('document.type', type.modelName)

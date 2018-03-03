@@ -2,7 +2,7 @@ import { moduleFor, test } from 'ember-qunit';
 
 moduleFor('adapter:prismic', 'Unit | Adapter | prismic', {
   // Specify the other units that are required for this test.
-  // needs: ['serializer:foo']
+  needs: ['service:prismic']
 });
 
 // Replace this with your real tests.

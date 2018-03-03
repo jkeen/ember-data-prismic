@@ -14,10 +14,21 @@
   </div>
   <div class="post-body">
 
-    {{#each post.body as |slice|}}
-    
-      {{slice}}
 
+    {{#each post.body as |slice|}}
+      <div class="post-body-slice">
+        {{#if (eq slice.sliceType 'text')}}
+          {{prismic-text slice.primary.text}}
+
+
+        {{else if (eq slice.sliceType 'recommended_posts')}}
+          'recommended posts'
+          {{#each slice.items as |item|}}
+            {{item.recommended_post.title}}
+          {{/each}}
+
+        {{/if}}
+      </div>
 
     {{/each}}
   </div>

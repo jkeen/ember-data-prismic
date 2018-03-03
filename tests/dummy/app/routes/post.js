@@ -5,7 +5,7 @@ export default Route.extend({
     return this.store.queryRecord('post', {uid: params.post_id});
   },
 
-  afterModel(model, transition) {
+  afterModel(model /*, transition */) {
     this.transitionTo('post', model.get('id'));
   }
 });
