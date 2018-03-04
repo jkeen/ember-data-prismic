@@ -9,5 +9,5 @@ export default Model.extend({
   alternateLanguages: attr('prismic-object'),
   firstPublicationDate: attr('date'),
   lastPublicationDate: attr('date'),
-  body: hasMany('prismic-slice')
+  body: hasMany('prismic-slice', { async: false })
 });

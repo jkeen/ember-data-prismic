@@ -131,12 +131,12 @@ test('slices should be included as relationships', function(assert) {
 
   actualSlicesInRelationships.forEach((r, i) => {
     assert.equal(r.type, 'prismic-slice', 'type should be prismic-slice');
-    assert.equal(r.id, `${singlePost.id}_s${i}`, "should have unique ids");
+    assert.equal(r.id, `${singlePost.uid}_s${i}`, "should have unique ids");
   });
 
   actualSlicesInIncludes.forEach((r, i) => {
     assert.equal(r.type, 'prismic-slice', 'type should be prismic-slice');
-    assert.equal(r.id, `${singlePost.id}_s${i}`, "should have unique ids");
+    assert.equal(r.id, `${singlePost.uid}_s${i}`, "should have unique ids");
   });
 });
 
@@ -152,5 +152,13 @@ test('document linked within a slice should be included as relationship', functi
   let post = singlePostWithSliceReferencingPost;
   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
   let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'post')
-  assert.equal(referencedPostsInIncludes.length, 1, "should be included");
+  assert.equal(referencedPostsInIncludes.length, 2, "should be included");
+});
+
+test('included should not have deep relationships with attributes', function(assert) {
+  let serializer = this.store().serializerFor('post');
+  let post = singlePostWithSliceReferencingPost;
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
+  let recommendedPosts = normalizedPost.included.find(d => d.attributes.sliceType === 'recommended_posts')
+  assert.equal(recommendedPosts.relationships.references.data[0].attributes, undefined, "should not have attributes");
 });

@@ -4,6 +4,7 @@ import { underscore } from '@ember/string' ;
 import { assign } from '@ember/polyfills';
 import { isArray, makeArray } from '@ember/array';
 import { get } from '@ember/object';
+import { copy } from '@ember/object/internals';
 import { isNone, typeOf } from '@ember/utils';
 
 export default DS.JSONSerializer.extend({
@@ -134,7 +135,7 @@ export default DS.JSONSerializer.extend({
           var modelClass = this.store.modelFor('prismic-slice');
 
           return {
-            id: `${objectData.id}_s${index}`,
+            id: `${objectData.uid}_s${index}`,
             type: modelClass.modelName,
             attributes: this.extractAttributes(modelClass, slice),
             relationships: this.extractRelationships(modelClass, slice)
@@ -146,7 +147,7 @@ export default DS.JSONSerializer.extend({
           var modelClass = this.store.modelFor(object.type);
 
           return {
-            id: object.id,
+            id: object.uid,
             type: modelClass.modelName,
             attributes: this.extractAttributes(modelClass, object),
             relationships: this.extractRelationships(modelClass, object)
@@ -257,10 +258,10 @@ export default DS.JSONSerializer.extend({
 
   normalizeSingleResponse(store, primaryModelClass, payload /* id, requestType */) {
     let normalizedData = this.normalize(primaryModelClass, payload).data;
+    let formatted      = this.formatResponseData(normalizedData);
 
-    let response =  this.formatResponseData(normalizedData);
-
-    return response;
+    console.log(formatted);
+    return formatted;
   },
 
   normalizeArrayResponse(store, primaryModelClass, payload /* id, requestType */ ) {
@@ -268,9 +269,10 @@ export default DS.JSONSerializer.extend({
     var included = []
 
     payload.results.map((item) => {
-      data.push(this.normalize(primaryModelClass, item).data);
-
-      included = included.concat(this.extractIncludes(store, item))
+      let normalizedData = this.normalize(primaryModelClass, item).data;
+      let formatted      = this.formatResponseData(normalizedData);
+      data.push(formatted.data);
+      included = included.concat(formatted.included)
     });
 
     let response =  {
@@ -309,72 +311,84 @@ export default DS.JSONSerializer.extend({
   },
 
   _nestedRelationships(resourceHash) {
-    let relationships = resourceHash.relationships;
+    let relationships    = resourceHash.relationships || {};
     let relationshipKeys = Object.keys(relationships);
     if (relationshipKeys.length === 0) return [];
 
     let records = []
     relationshipKeys.map(key => {
-      relationships[key].forEach(record => records.push(record));
+      makeArray(relationships[key].data).forEach(record => records.push(assign({}, record)));
     });
 
     return records;
   },
 
   extractIncludes(resourceHash, included = []) {
-    let relationships = resourceHash.relationships;
-    let relationshipKeys = Object.keys(relationships);
-    if (relationshipKeys.length === 0) {
-      // has no relationships, end of the line. push this sucker
-      included.push(resourceHash);
-      return included;
-    }
-    else {
-      relationshipKeys.map(key => {
-        let records = makeArray(relationships[key].data);
+    this._nestedRelationships(resourceHash).forEach(relationship => {
+      this.extractIncludes(relationship, included);
 
-        records.forEach(record => {
-          this.extractIncludes(record, included);
-        });
-      });
-    }
+      included.push(relationship);
+    });
 
     return included;
   },
 
-  removeAttributes(resourceHash, included = []) {
-    delete resourceHash.attributes;
+  // removeAttributes(resourceHash, nested) {
+  //   console.log(resourceHash);
+  //
+  //   let relationshipKeys = Object.keys(resourceHash.relationships || {});
+  //   relationshipKeys.map(key => {
+  //     let records = makeArray(resourceHash.relationships[key].data);
+  //
+  //     if (records.length > 0) {
+  //       resourceHash.relationships[key] = records.map(record => {
+  //         return this.removeAttributes(record, true);
+  //       });
+  //     }
+  //     else {
+  //       delete resourceHash.relationships;
+  //       delete resourceHash.attributes;
+  //     }
+  //   });
+  //
+  //   // if (nested) {
+  //   //   delete resourceHash.relationships;
+  //   //   delete resourceHash.attributes;
+  //   // }
+  //
+  //   return resourceHash;
+  // },
 
+  removeAttributes(resourceHash, nested) {
     let relationships = resourceHash.relationships;
     let relationshipKeys = Object.keys(relationships);
     relationshipKeys.map(key => {
       let records = makeArray(relationships[key].data);
 
       records.forEach(record => {
-        this.removeAttributes(record, included);
+        this.removeAttributes(record, true);
       });
     });
 
+    if (nested) {
+       delete resourceHash.attributes;
+       delete resourceHash.relationships;
+    }
+
     return resourceHash;
   },
-
 
   formatResponseData(normalizedData) {
     /* given an normalized data hash, return {
       data: [passed in data without 'attributes' in relationships]
       included: [flattened array of all nested relationships]
     } */
-    let included = this.extractIncludes(normalizedData);
-    let data = this.removeAttributes(normalizedData);
-
-    console.log(normalizedData);
-
-    console.log(included);
-    console.log(data);
+    let data = this.removeAttributes(copy(normalizedData, true));
+    let included = this.extractIncludes(normalizedData).map(include => this.removeAttributes(include));
 
     return {
       data,
       included
-    }
+    };
   }
 });

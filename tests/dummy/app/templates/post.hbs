@@ -3,34 +3,42 @@
 {{#with model as |post|}}
 <div class="post">
   <h2 class="post-title">{{link-to post.title 'post' post}}</h2>
+  {{#if post.author}}
   <div class="post-byline">
-    {{post.author.firstName}}
     {{#with post.author as |author|}}
-      {{link-to author.firstName 'author' author}}
+      by {{link-to author.firstName 'author' author}}
     {{/with}}
-
-    {{prismic-text post.author.bio}}
-
   </div>
+  {{/if}}
   <div class="post-body">
-
-
     {{#each post.body as |slice|}}
       <div class="post-body-slice">
         {{#if (eq slice.sliceType 'text')}}
           {{prismic-text slice.primary.text}}
 
-
         {{else if (eq slice.sliceType 'recommended_posts')}}
-          'recommended posts'
+          <h2>Recommended</h2>
           {{#each slice.items as |item|}}
-            {{item.recommended_post.title}}
+            {{link-to (or item.recommended_post.title 'missing') item.recommended_post.type item.recommended_post.id}}
           {{/each}}
 
+          {{#each slice.references as |item|}}
+            {{post-reference id=item.id title=(or item.title "untitled")}}
+          {{/each}}
         {{/if}}
       </div>
 
     {{/each}}
   </div>
 </div>
+
+<h3>Resources</h3>
+<div class="">
+  {{post-reference id=item.id title=item.title}}
+
+  {{#if post.author}}
+    {{author-reference id=post.author.id title=post.author.name bio=post.author.bio}}
+  {{/if}}
+</div>
+
 {{/with}}

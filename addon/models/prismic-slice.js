@@ -7,5 +7,5 @@ export default Model.extend({
 
   items: attr(),
   primary: attr(),
-  references: hasMany('references', { polymorphic: true })
+  references: hasMany('prismic-reference', { polymorphic: true, async: false })
 });
