@@ -1,4 +1,4 @@
-import Prismic from 'ember-data-prismic/models/prismic';
+import Prismic from 'ember-data-prismic/models/prismic-document';
 import attr from 'ember-data/attr';
 import { computed, get } from '@ember/object';
 export default Prismic.extend({

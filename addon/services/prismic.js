@@ -1,4 +1,3 @@
-import Ember from 'ember';
 import Service from '@ember/service';
 import Prismic from 'prismic-javascript';
 import { getOwner } from '@ember/application';

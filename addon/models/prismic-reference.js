@@ -1,4 +1,4 @@
-import PrismicModel from './prismic';
+import PrismicModel from './prismic-document';
 export default PrismicModel.extend({
-  
+
 });

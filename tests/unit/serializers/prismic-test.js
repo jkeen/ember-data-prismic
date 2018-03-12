@@ -1,7 +1,7 @@
 import { moduleForModel, test } from 'ember-qunit';
-import PrismicModel from 'ember-data-prismic/models/prismic';
+import PrismicModel from 'ember-data-prismic/models/prismic-document';
 import PrismicObjectTransform from 'ember-data-prismic/transforms/prismic-object';
-import PrismicSlice from 'ember-data-prismic/models/prismic-slice';
+import PrismicSlice from 'ember-data-prismic/models/prismic-document-slice';
 import PrismicAdapter from 'ember-data-prismic/adapters/prismic';
 import PrismicSerializer from 'ember-data-prismic/serializers/prismic';
 
@@ -10,6 +10,7 @@ import { get, computed } from '@ember/object';
 import { belongsTo, hasMany } from 'ember-data/relationships';
 import singlePostWithAuthor from '../../helpers/responses/single-post-with-author';
 import singlePostWithSliceReferencingPost from '../../helpers/responses/single-post-with-slice-referencing-post';
+import singlePostWithSliceReferencingUnknown from '../../helpers/responses/single-post-with-slice-referencing-unknown';
 
 import Pretender from 'pretender';
 import { A } from '@ember/array';
@@ -27,7 +28,7 @@ function fakeSearchResponse(response) {
    });
 }
 
-moduleForModel('prismic', 'Unit | Serializer | prismic', {
+moduleForModel('prismic-document', 'Unit | Serializer | prismic', {
   // Specify the other units that are required for this test.
   needs: ['serializer:prismic', 'service:prismic'],
   beforeEach() {
@@ -39,7 +40,6 @@ moduleForModel('prismic', 'Unit | Serializer | prismic', {
 
     Post = PrismicModel.extend({
       author: belongsTo('author'),
-      body: hasMany('prismic-slice'),
       date: attr('date'),
       slug: attr('string'),
       title: attr('string')
@@ -55,7 +55,8 @@ moduleForModel('prismic', 'Unit | Serializer | prismic', {
       bio: attr('prismic-object')
     });
 
-    this.registry.register('model:prismic-slice', PrismicSlice);
+    this.registry.register('model:prismic-document', PrismicModel);
+    this.registry.register('model:prismic-document-slice', PrismicSlice);
     this.registry.register('transform:prismic-object', PrismicObjectTransform);
     this.registry.register('model:post', Post);
     this.registry.register('model:author', Author);
@@ -125,17 +126,17 @@ test('slices should be included as relationships', function(assert) {
 
   let expectedSlices = singlePost.data.body;
   let actualSlicesInRelationships   = normalizedPost.data.relationships.body.data;
-  let actualSlicesInIncludes = A(normalizedPost.included).filter(d => d.type === 'prismic-slice')
+  let actualSlicesInIncludes = A(normalizedPost.included).filter(d => d.type === 'prismic-document-slice')
   assert.equal(expectedSlices.length, actualSlicesInRelationships.length, "slice count should be the same in relationships");
   assert.equal(expectedSlices.length, actualSlicesInIncludes.length, "slice count should be the same in includes");
 
   actualSlicesInRelationships.forEach((r, i) => {
-    assert.equal(r.type, 'prismic-slice', 'type should be prismic-slice');
+    assert.equal(r.type, 'prismic-document-slice', 'type should be prismic-document-slice');
     assert.equal(r.id, `${singlePost.uid}_s${i}`, "should have unique ids");
   });
 
   actualSlicesInIncludes.forEach((r, i) => {
-    assert.equal(r.type, 'prismic-slice', 'type should be prismic-slice');
+    assert.equal(r.type, 'prismic-document-slice', 'type should be prismic-document-slice');
     assert.equal(r.id, `${singlePost.uid}_s${i}`, "should have unique ids");
   });
 });
@@ -152,6 +153,21 @@ test('document linked within a slice should be included as relationship', functi
   let post = singlePostWithSliceReferencingPost;
   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
   let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'post')
+  assert.equal(referencedPostsInIncludes.length, 2, "should be included");
+});
+
+test('unknown document linked within a slice should be included as relationship', function(assert) {
+
+  // post
+  //  -> slice
+  //  -> slice
+  //    -> post
+  //  -> slice
+
+  let serializer = this.store().serializerFor('post');
+  let post = singlePostWithSliceReferencingUnknown;
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
+  let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'song')
   assert.equal(referencedPostsInIncludes.length, 2, "should be included");
 });
 

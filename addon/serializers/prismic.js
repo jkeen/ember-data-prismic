@@ -80,8 +80,6 @@ export default DS.JSONSerializer.extend({
           relationshipHash[key].push(get(fieldData.primary, key));
         }
       });
-
-      // assign(relationshipHash, this.extractDocumentLinks(fieldData.primary))
     }
 
     return relationshipHash;
@@ -132,7 +130,7 @@ export default DS.JSONSerializer.extend({
     else if (typeOf(relationshipHash) === 'array') {
       if (this.isSliceData(relationshipHash)) {
         return relationshipHash.map((slice, index) => {
-          var modelClass = this.store.modelFor('prismic-slice');
+          var modelClass = this.store.modelFor('prismic-document-slice');
 
           return {
             id: `${objectData.uid}_s${index}`,
@@ -144,6 +142,7 @@ export default DS.JSONSerializer.extend({
       }
       else {
         return relationshipHash.map(object => {
+          debugger
           var modelClass = this.store.modelFor(object.type);
 
           return {
@@ -188,7 +187,7 @@ export default DS.JSONSerializer.extend({
     if (resourceHash && resourceHash.data) {
       return resourceHash.data;
     }
-    else if (modelClass.modelName == 'prismic-slice') {
+    else if (modelClass.modelName == 'prismic-document-slice') {
       return resourceHash;
     }
     else {
@@ -332,32 +331,6 @@ export default DS.JSONSerializer.extend({
 
     return included;
   },
-
-  // removeAttributes(resourceHash, nested) {
-  //   console.log(resourceHash);
-  //
-  //   let relationshipKeys = Object.keys(resourceHash.relationships || {});
-  //   relationshipKeys.map(key => {
-  //     let records = makeArray(resourceHash.relationships[key].data);
-  //
-  //     if (records.length > 0) {
-  //       resourceHash.relationships[key] = records.map(record => {
-  //         return this.removeAttributes(record, true);
-  //       });
-  //     }
-  //     else {
-  //       delete resourceHash.relationships;
-  //       delete resourceHash.attributes;
-  //     }
-  //   });
-  //
-  //   // if (nested) {
-  //   //   delete resourceHash.relationships;
-  //   //   delete resourceHash.attributes;
-  //   // }
-  //
-  //   return resourceHash;
-  // },
 
   removeAttributes(resourceHash, nested) {
     let relationships = resourceHash.relationships;

@@ -29,12 +29,12 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 
   //models/example.js
 
-  import Prismic from 'ember-data-prismic/models/prismic';
+  import PrismicDocument from 'ember-data-prismic/models/prismic-document';
   import attr from 'ember-data/attr';
-  export default Prismic.extend({
+  export default PrismicDocument.extend({
     // your fields
     date: attr('date') // a prismic date field
-    description: attr('prismic-object') // this keeps a prismic object in tact so we can use our template helpers for displaying HTML or text
+    description: attr() // this keeps a prismic object in tact so we can use our template helpers for displaying HTML or text
   });
 ```
 
