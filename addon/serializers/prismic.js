@@ -12,6 +12,15 @@ export default DS.JSONSerializer.extend({
     return underscore(key);
   },
 
+  modelFromPrismicType(type) {
+    if (this.store._hasModelFor(type)) {
+      return this.store.modelFor(type);
+    }
+    else {
+      return this.store.modelFor('prismic-document');
+    }
+  },
+
   extractAttributes(modelClass, objHash) {
     let attributeKey;
     let attributes = {};
@@ -142,8 +151,7 @@ export default DS.JSONSerializer.extend({
       }
       else {
         return relationshipHash.map(object => {
-          debugger
-          var modelClass = this.store.modelFor(object.type);
+          var modelClass = this.modelFromPrismicType(object.type);
 
           return {
             id: object.uid,
@@ -259,7 +267,6 @@ export default DS.JSONSerializer.extend({
     let normalizedData = this.normalize(primaryModelClass, payload).data;
     let formatted      = this.formatResponseData(normalizedData);
 
-    console.log(formatted);
     return formatted;
   },
 

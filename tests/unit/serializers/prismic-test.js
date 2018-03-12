@@ -1,32 +1,21 @@
 import { moduleForModel, test } from 'ember-qunit';
 import PrismicModel from 'ember-data-prismic/models/prismic-document';
-import PrismicObjectTransform from 'ember-data-prismic/transforms/prismic-object';
 import PrismicSlice from 'ember-data-prismic/models/prismic-document-slice';
+
+import PrismicObjectTransform from 'ember-data-prismic/transforms/prismic-object';
 import PrismicAdapter from 'ember-data-prismic/adapters/prismic';
 import PrismicSerializer from 'ember-data-prismic/serializers/prismic';
 
 import attr from 'ember-data/attr';
 import { get, computed } from '@ember/object';
-import { belongsTo, hasMany } from 'ember-data/relationships';
+import { belongsTo } from 'ember-data/relationships';
 import singlePostWithAuthor from '../../helpers/responses/single-post-with-author';
 import singlePostWithSliceReferencingPost from '../../helpers/responses/single-post-with-slice-referencing-post';
 import singlePostWithSliceReferencingUnknown from '../../helpers/responses/single-post-with-slice-referencing-unknown';
 
-import Pretender from 'pretender';
 import { A } from '@ember/array';
-import { run } from '@ember/runloop';
 
-var Post, Author, post, image;
-
-var server
-
-function fakeSearchResponse(response) {
-  server = new Pretender(function() {
-     this.get(`https://ember-data-prismic.prismic.io/api/v2/search`, function() {
-       return [200, { "Content-Type": "application/json" }, JSON.stringify(response)];
-     });
-   });
-}
+var Post, Author;
 
 moduleForModel('prismic-document', 'Unit | Serializer | prismic', {
   // Specify the other units that are required for this test.
@@ -40,19 +29,19 @@ moduleForModel('prismic-document', 'Unit | Serializer | prismic', {
 
     Post = PrismicModel.extend({
       author: belongsTo('author'),
-      date: attr('date'),
-      slug: attr('string'),
-      title: attr('string')
+      date  : attr('date'),
+      slug  : attr('string'),
+      title : attr('string')
     });
 
     Author = PrismicModel.extend({
       firstName: attr('string'),
-      lastName: attr('string'),
-      name: computed('firstName', 'lastName', function() {
+      lastName : attr('string'),
+      name     : computed('firstName', 'lastName', function() {
         return [get(this, 'firstName'), get(this, 'lastName')].join(" ");
       }),
-      photo: attr('prismic-object'),
-      bio: attr('prismic-object')
+      photo    : attr('prismic-object'),
+      bio      : attr('prismic-object')
     });
 
     this.registry.register('model:prismic-document', PrismicModel);
@@ -61,15 +50,7 @@ moduleForModel('prismic-document', 'Unit | Serializer | prismic', {
     this.registry.register('model:post', Post);
     this.registry.register('model:author', Author);
   }
-  // },
-  //
-  // afterEach() {
-  //   // if (server) {
-  //   //   server.shutdown();
-  //   // }
-  // }
 });
-
 
 // Sanity check to make sure everything is setup correctly.
 test('returns correct serializer for Post', function(assert) {
@@ -161,14 +142,14 @@ test('unknown document linked within a slice should be included as relationship'
   // post
   //  -> slice
   //  -> slice
-  //    -> post
+  //    -> song
   //  -> slice
 
   let serializer = this.store().serializerFor('post');
   let post = singlePostWithSliceReferencingUnknown;
   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
-  let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'song')
-  assert.equal(referencedPostsInIncludes.length, 2, "should be included");
+  let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'prismic-document')
+  assert.equal(referencedPostsInIncludes.length, 1, "should be included");
 });
 
 test('included should not have deep relationships with attributes', function(assert) {
