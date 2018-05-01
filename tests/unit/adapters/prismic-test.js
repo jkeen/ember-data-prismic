@@ -1,12 +1,11 @@
-import { moduleFor, test } from 'ember-qunit';
+import { module, test } from 'qunit';
+import { setupTest } from 'ember-qunit';
 
-moduleFor('adapter:prismic', 'Unit | Adapter | prismic', {
-  // Specify the other units that are required for this test.
-  needs: ['service:prismic']
-});
+module('Unit | Adapter | prismic', function(hooks) {
+  setupTest(hooks);
 
-// Replace this with your real tests.
-test('it exists', function(assert) {
-  let adapter = this.subject();
-  assert.ok(adapter);
+  test('it exists', function(assert) {
+    let adapter = this.owner.lookup('adapter:prismic');
+    assert.ok(adapter);
+  });
 });

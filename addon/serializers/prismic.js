@@ -52,7 +52,6 @@ export default DS.JSONSerializer.extend({
       }
     });
 
-
     attributes['recordId'] = systemFields['id'];
 
     return attributes;

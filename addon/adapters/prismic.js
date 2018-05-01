@@ -37,20 +37,6 @@ export default DS.RESTAdapter.extend({
   */
   deleteRecord: null,
 
-  /**
-    Allows the adapter to override the content type param used in api calls where
-    content type param is needed. (e.g. `findAll`, `query`, `queryRecord`)
-
-    @method contentTypeParam
-    @param {String} modelName
-    @return {String}
-    @public
-  */
-
-  contentTypeParam(modelName) {
-    return modelName;
-  },
-
   fetchLinkRequestParams(store, type) {
     let fetchLinks = []
 
@@ -68,7 +54,7 @@ export default DS.RESTAdapter.extend({
 
   /**
     Called by the store in order to fetch the JSON for a given
-    type and ID.
+    type and ID. This is the
 
     The `findRecord` method makes a fetch (HTTP GET) request to a URL, and returns a
     promise for the resulting payload.
@@ -90,25 +76,6 @@ export default DS.RESTAdapter.extend({
         fetchLinks: this.fetchLinkRequestParams(store, type)
       })
     })
-  },
-
-  /**
-    Called by the store in order to fetch several records together.
-
-    The `findMany` method makes a fetch (HTTP GET) request to a URL, and returns a
-    promise for the resulting payload.
-
-    @method findMany
-    @param {DS.Store} store
-    @param {DS.Model} type
-    @param {Array} ids
-    @return {Promise} promise
-    @public
-  */
-  findMany(store, type, ids) {
-    let contentType = (type.modelName === 'asset' || type.modelName === 'contentful-asset') ? 'assets' : 'entries';
-
-    return this._getContent(contentType, { 'sys.id[in]': ids.toString() });
   },
 
   /**
@@ -178,9 +145,6 @@ export default DS.RESTAdapter.extend({
   */
   queryRecord(store, type, query) {
     return get(this, 'prismic').getApi(this.host).then(api => {
-      // return api.query([
-        // Prismic.Predicates.at('document.type', type.modelName)
-      // ]);
       return api.query([
         Prismic.Predicates.at(`my.${type.modelName}.uid`, query.uid),
         Prismic.Predicates.at('document.type', type.modelName)

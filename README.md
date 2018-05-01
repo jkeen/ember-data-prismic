@@ -42,10 +42,26 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 ```javascript
 
   {{prismic-html model.description}} // displays html
-
-
   {{prismic-text model.description}} // converts the rich text to text
 
+```
+
+##### Routes
+
+```javascript
+  //router.js
+
+  this.route('post', {path: "post/:post_id"});
+
+
+  // routes/post.js
+  model(params) {
+    return this.store.queryRecord('post', {uid: params.post_id});
+  },
+
+  afterModel(model /*, transition */) {
+    this.transitionTo('post', model.get('id')); // this will transition to the correct url
+  }
 ```
 
 ------------------------------------------------------------------------------

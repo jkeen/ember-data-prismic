@@ -1,11 +1,37 @@
-.post-reference {
-  width: 200px;
-  height: 300px;
-  border: 1px solid #CCC;
+body {
+  font-family: Helvetica Neue, Helvetica, san-serif;
+  font-size: 15px;
 }
 
-.author-reference {
-  width: 200px;
-  height: 300px;
+
+.post-reference {
+  width: 100px;
+  height: 100px;
   border: 1px solid #CCC;
+}
+  .post-reference-title {
+    font-family: Helvetica;
+    font-size: 15px;
+  }
+
+.author-reference {
+  border: 1px solid #CCC;
+  position: relative;
+}
+
+  .author-reference-name {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  .author-reference-photo {
+    max-width: 100px;
+    height: auto;
+  }
+
+
+.author-photo {
+  width: 200px;
+  height: auto;
 }

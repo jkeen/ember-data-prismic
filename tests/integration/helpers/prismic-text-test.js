@@ -40,4 +40,10 @@ module('Integration | Helper | prismic-text', function(hooks) {
 
     assert.equal(this.element.textContent.trim(), 'Jeff wrote this addon after being frustrated with not having a data adapter for prismic. He knew Prismic was a little funky in the way it operated compared to other data sources, but still felt that having a data adapter would be great.');
   });
+
+  test('it renders without content', async function(assert) {
+    this.set('inputValue', null);
+    await render(hbs`{{prismic-text inputValue}}`);
+    assert.equal(this.element.textContent.trim(), '');
+  });
 });

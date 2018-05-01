@@ -6,8 +6,7 @@ import hbs from 'htmlbars-inline-precompile';
 module('Integration | Helper | prismic-html', function(hooks) {
   setupRenderingTest(hooks);
 
-  // Replace this with your real tests.
-  test('it renders', async function(assert) {
+  test('it renders with content', async function(assert) {
     this.set('inputValue', [
       {
         "type": "paragraph",
@@ -41,5 +40,11 @@ module('Integration | Helper | prismic-html', function(hooks) {
     assert.equal(this.element.querySelector('em').textContent, 'data');
     assert.equal(this.element.querySelector('strong').textContent, 'adapter');
     assert.equal(this.element.textContent.trim(), 'Jeff wrote this addon after being frustrated with not having a data adapter for prismic. He knew Prismic was a little funky in the way it operated compared to other data sources, but still felt that having a data adapter would be great.');
+  });
+
+  test('it renders without content', async function(assert) {
+    this.set('inputValue', null);
+    await render(hbs`{{prismic-html inputValue}}`);
+    assert.equal(this.element.textContent.trim(), '');
   });
 });
