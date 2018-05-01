@@ -4,10 +4,19 @@ import { inject } from '@ember/service';
 import { get } from '@ember/object';
 import Prismic from 'prismic-javascript';
 import { underscore } from '@ember/string';
+// import fetch from 'fetch';
 
 export default DS.RESTAdapter.extend({
   prismic: inject(),
   host: config.prismic.apiEndpoint,
+
+  init() {
+    this._super(...arguments);
+    if (!this.host.includes('api/v2')) {
+      throw "ember-data-prismic only supports V2 of the prismic API"
+    }
+  },
+
   defaultSerializer: 'prismic',
 
   /**
@@ -41,7 +50,6 @@ export default DS.RESTAdapter.extend({
   contentTypeParam(modelName) {
     return modelName;
   },
-
 
   fetchLinkRequestParams(store, type) {
     let fetchLinks = []

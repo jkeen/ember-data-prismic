@@ -21,6 +21,10 @@ export default DS.JSONSerializer.extend({
     }
   },
 
+  objectId(object) {
+    return object.uid || object.id;
+  },
+
   extractAttributes(modelClass, objHash) {
     let attributeKey;
     let attributes = {};
@@ -130,7 +134,7 @@ export default DS.JSONSerializer.extend({
     if (typeOf(relationshipHash) === 'object') {
       var modelClass = this.store.modelFor(relationshipModelName);
       return {
-        id: relationshipHash.uid,
+        id: this.objectId(relationshipHash),
         type: modelClass.modelName,
         attributes: this.extractAttributes(modelClass, relationshipHash),
         relationships: this.extractRelationships(modelClass, relationshipHash)
@@ -142,7 +146,7 @@ export default DS.JSONSerializer.extend({
           var modelClass = this.store.modelFor('prismic-document-slice');
 
           return {
-            id: `${objectData.uid}_s${index}`,
+            id: `${this.objectId(objectData)}_s${index}`,
             type: modelClass.modelName,
             attributes: this.extractAttributes(modelClass, slice),
             relationships: this.extractRelationships(modelClass, slice)
@@ -154,7 +158,7 @@ export default DS.JSONSerializer.extend({
           var modelClass = this.modelFromPrismicType(object.type);
 
           return {
-            id: object.uid,
+            id: this.objectId(object),
             type: modelClass.modelName,
             attributes: this.extractAttributes(modelClass, object),
             relationships: this.extractRelationships(modelClass, object)
@@ -168,7 +172,7 @@ export default DS.JSONSerializer.extend({
     let data = null;
     if (resourceHash) {
       data = {
-        id: resourceHash.uid,
+        id: this.objectId(resourceHash),
         type: resourceHash.type,
         attributes: this.extractAttributes(modelClass, resourceHash),
         relationships: this.extractRelationships(modelClass, resourceHash)

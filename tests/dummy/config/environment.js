@@ -23,7 +23,7 @@ module.exports = function(environment) {
     },
 
     prismic: {
-      apiEndpoint: 'https://ember-data-prismic.prismic.io/api/v2',
+      apiEndpoint: 'https://ember-data-prismic.cdn.prismic.io/api/v2',
       accessToken: 'MC5Xb25sRUNNQUFLTW80ZWx1.77-977-977-977-977-977-977-977-9Ke-_vSoySu-_ve-_ve-_vRnvv73vv70a77-9P--_ve-_ve-_vXppCO-_ve-_ve-_ve-_vQ'
     }
   };
