@@ -12,6 +12,7 @@ import { belongsTo } from 'ember-data/relationships';
 import singlePostWithAuthor from '../../helpers/responses/single-post-with-author';
 import singlePostWithSliceReferencingPost from '../../helpers/responses/single-post-with-slice-referencing-post';
 import singlePostWithSliceReferencingUnknown from '../../helpers/responses/single-post-with-slice-referencing-unknown';
+import allPosts from '../../helpers/responses/all-posts';
 
 import { A } from '@ember/array';
 
@@ -159,3 +160,59 @@ test('included should not have deep relationships with attributes', function(ass
   let recommendedPosts = normalizedPost.included.find(d => d.attributes.sliceType === 'recommended_posts')
   assert.equal(recommendedPosts.relationships.references.data[0].attributes, undefined, "should not have attributes");
 });
+
+// test('included slices should have ids based off parent', function(assert) {
+//   let serializer = this.store().serializerFor('post');
+//   let post = singlePostWithSliceReferencingPost;
+//   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
+//   A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(inc => {
+//
+//   });
+// });
+
+test('included posts in single response should keep recordId and use uid for id', function(assert) {
+  let serializer = this.store().serializerFor('post');
+  let post = singlePostWithSliceReferencingPost;
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
+  A(normalizedPost.included).filterBy('type', "post").forEach(inc => {
+    assert.notEqual(inc.attributes.recordId, inc.attributes.uid, "should not have same record id and uid");
+    assert.notEqual(inc.attributes.recordId, inc.id, "should not have same record id and uid");
+    assert.equal(inc.id, inc.attributes.uid, "have same uid and id");
+  });
+});
+
+test('included posts in all posts response should keep recordId and use uid for id', function(assert) {
+  let serializer = this.store().serializerFor('post');
+  let normalizedPost = serializer.normalizeArrayResponse(this.store(), Post, allPosts);
+  A(normalizedPost.included).filterBy('type', "post").forEach(inc => {
+    assert.notEqual(inc.attributes.recordId, inc.attributes.uid, "should not have same record id and uid");
+    assert.notEqual(inc.attributes.recordId, inc.id, "should not have same record id and uid");
+    assert.equal(inc.id, inc.attributes.uid, "have same uid and id");
+  });
+});
+
+// test('slice items should not have single top level key', function(assert) {
+//   let serializer = this.store().serializerFor('post');
+//   let post = singlePostWithSliceReferencingPost;
+//   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
+//   A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(slice => {
+//     A(slice.attributes.items).forEach(item => {
+//       if (Object.keys(item).length > 0) {
+//         assert.ok(Object.keys(item).length > 1, `should not have single top level "${Object.keys(item)[0]}" key`);
+//       }
+//     })
+//   });
+// });
+//
+// test('slice items should not have single top level key in all response', function(assert) {
+//   let serializer = this.store().serializerFor('post');
+//   let normalizedPost = serializer.normalizeArrayResponse(this.store(), Post, allPosts);
+//
+//   A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(slice => {
+//     A(slice.attributes.items).forEach(item => {
+//       if (Object.keys(item).length > 0) {
+//         assert.ok(Object.keys(item).length > 1, `should not have single top level "${Object.keys(item)[0]}" key`);
+//       }
+//     })
+//   });
+// });
