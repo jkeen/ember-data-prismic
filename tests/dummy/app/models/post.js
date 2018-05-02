@@ -3,7 +3,7 @@ import attr from 'ember-data/attr';
 import { belongsTo } from 'ember-data/relationships';
 
 export default Prismic.extend({
-  author: belongsTo('author'),
+  author: belongsTo('author', {async: false}),
   date: attr('date'),
   title: attr('string')
 });

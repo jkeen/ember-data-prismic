@@ -3,6 +3,48 @@ body {
   font-size: 15px;
 }
 
+.post-body {
+  margin: 10px 0;
+  padding: 20px 0 10px 20px;
+  position: relative;
+  &:before {
+    content: "slices";
+    display: inline-block;
+    background-color: #EEE;
+    color: #888;
+    font-size: 10px;
+    padding: 3px;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+
+.post-body-slice {
+  border: 1px dotted #EEE;
+  min-height: 50px;
+  margin: 10px 0;
+  padding: 20px 0 10px;
+  position: relative;
+  &:before {
+    content: 'slice-type: ' attr(data-slice-type);
+    display: inline-block;
+    background-color: #EEE;
+    color: #888;
+    font-size: 10px;
+    padding: 3px;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+
+.post-body-slice-raw {
+  font-family: monospace;
+  margin-top: 20px;
+  color: #888;
+  font-size: 10px;
+}
 
 .post-reference {
   width: 100px;

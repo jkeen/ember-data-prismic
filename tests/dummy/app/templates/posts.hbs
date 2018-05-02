@@ -1,16 +1,3 @@
 {{#each model as |post|}}
-  <div class="post">
-    <h2 class="post-title">{{link-to post.title 'post' post}}</h2>
-    <div class="post-byline">
-      {{#link-to 'author' post.author}}
-        {{post.author.name}}
-      {{/link-to}}
-      {{prismic-html post.author.bio}}
-    </div>
-    <div class="post-body">
-      {{#each post.slices as |slice|}}
-
-      {{/each}}
-    </div>
-  </div>
+  {{post-debug post=post}}
 {{/each}}
