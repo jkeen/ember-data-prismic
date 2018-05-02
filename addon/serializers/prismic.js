@@ -64,7 +64,7 @@ export default DS.JSONSerializer.extend({
   extractDocumentLinks(fieldData) {
     let relationshipHash = {}
     A(Object.keys(fieldData)).map(key => {
-      if (get(fieldData, `${key}.link_type`) === 'Document') {
+      if (get(fieldData, `${key}.link_type`) === 'Document' && get(fieldData, `${key}.id`)) {
         relationshipHash[key] = get(fieldData, key);
       }
       else if (key === 'body' && this.isSliceData(get(fieldData, key))) {
@@ -75,7 +75,7 @@ export default DS.JSONSerializer.extend({
     if (this.isSlice(fieldData)) {
       fieldData.items.map(item => {
         A(Object.keys(item)).map(key => {
-          if (get(item, `${key}.link_type`) === 'Document') {
+          if (get(item, `${key}.link_type`) === 'Document' && get(item, `${key}.id`)) {
             if (!relationshipHash[key]) {
               relationshipHash[key] = A();
             }
