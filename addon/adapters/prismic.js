@@ -49,6 +49,10 @@ export default DS.RESTAdapter.extend({
       }
     });
 
+    type.eachAttribute(attribute => {
+      fetchLinks.push(`${underscore(type.modelName)}.${underscore(attribute)}`)
+    });
+
     return fetchLinks;
   },
 
@@ -68,14 +72,19 @@ export default DS.RESTAdapter.extend({
   */
   findRecord(store, type, id) {
     return get(this, 'prismic').getApi(this.host).then(api => {
-      // return api.query([
-        // Prismic.Predicates.at('document.type', type.modelName)
-      // ]);
-
       return api.getByUID(type.modelName, id, {
         fetchLinks: this.fetchLinkRequestParams(store, type)
-      })
-    })
+      }).then((post) => {
+        if (post) {
+          return post;
+        }
+        else {
+          return api.getByID(id, {
+            fetchLinks: this.fetchLinkRequestParams(store, type)
+          });
+        }
+      });
+    });
   },
 
   /**

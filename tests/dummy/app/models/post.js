@@ -5,6 +5,5 @@ import { belongsTo } from 'ember-data/relationships';
 export default Prismic.extend({
   author: belongsTo('author'),
   date: attr('date'),
-  slug: attr('string'),
   title: attr('string')
 });
