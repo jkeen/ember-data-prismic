@@ -123,6 +123,25 @@ test('slices should be included as relationships', function(assert) {
   });
 });
 
+test('document linked within a slice should be included as relationship in all posts response', function(assert) {
+
+  // post
+  //  -> slice
+  //  -> slice
+  //    -> post
+  //  -> slice
+
+  let serializer = this.store().serializerFor('post');
+  let normalizedPost = serializer.normalizeArrayResponse(this.store(), Post, allPosts);
+  let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'post')
+  assert.equal(referencedPostsInIncludes.length, 2, "should be included");
+
+  let referenceSlice = normalizedPost.included.filter(d => d.id === 'development-has-started_s2')[0];
+
+  assert.equal(get(referenceSlice, 'relationships.references.data').length, 2, "relationships to posts should be listed");
+});
+
+
 test('document linked within a slice should be included as relationship', function(assert) {
 
   // post
@@ -136,6 +155,10 @@ test('document linked within a slice should be included as relationship', functi
   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
   let referencedPostsInIncludes = A(normalizedPost.included).filter(d => d.type === 'post')
   assert.equal(referencedPostsInIncludes.length, 2, "should be included");
+
+  let referenceSlice = normalizedPost.included.filter(d => d.id === 'development-has-started_s2')[0];
+
+  assert.equal(get(referenceSlice, 'relationships.references.data').length, 2, "relationships to posts should be listed");
 });
 
 test('unknown document linked within a slice should be included as relationship', function(assert) {
@@ -191,28 +214,28 @@ test('included posts in all posts response should keep recordId and use uid for 
   });
 });
 
-// test('slice items should not have single top level key', function(assert) {
-//   let serializer = this.store().serializerFor('post');
-//   let post = singlePostWithSliceReferencingPost;
-//   let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
-//   A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(slice => {
-//     A(slice.attributes.items).forEach(item => {
-//       if (Object.keys(item).length > 0) {
-//         assert.ok(Object.keys(item).length > 1, `should not have single top level "${Object.keys(item)[0]}" key`);
-//       }
-//     })
-//   });
-// });
-//
-// test('slice items should not have single top level key in all response', function(assert) {
-//   let serializer = this.store().serializerFor('post');
-//   let normalizedPost = serializer.normalizeArrayResponse(this.store(), Post, allPosts);
-//
-//   A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(slice => {
-//     A(slice.attributes.items).forEach(item => {
-//       if (Object.keys(item).length > 0) {
-//         assert.ok(Object.keys(item).length > 1, `should not have single top level "${Object.keys(item)[0]}" key`);
-//       }
-//     })
-//   });
-// });
+test('slice items should have single top level key', function(assert) {
+  let serializer = this.store().serializerFor('post');
+  let post = singlePostWithSliceReferencingPost;
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), Post, post);
+  A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(slice => {
+    A(slice.attributes.items).forEach(item => {
+      if (Object.keys(item).length > 0) {
+        assert.ok(Object.keys(item).length === 1, `should have single top level key`);
+      }
+    })
+  });
+});
+
+test('slice items should have single top level key in all response', function(assert) {
+  let serializer = this.store().serializerFor('post');
+  let normalizedPost = serializer.normalizeArrayResponse(this.store(), Post, allPosts);
+
+  A(normalizedPost.included).filterBy('type', "prismic-document-slice").forEach(slice => {
+    A(slice.attributes.items).forEach(item => {
+      if (Object.keys(item).length > 0) {
+        assert.ok(Object.keys(item).length === 1, `should have single top level key`);
+      }
+    })
+  });
+});

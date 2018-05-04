@@ -6,7 +6,7 @@ import Prismic from 'prismic-javascript';
 import { underscore } from '@ember/string';
 // import fetch from 'fetch';
 
-export default DS.RESTAdapter.extend({
+export default DS.JSONAPIAdapter.extend({
   prismic: inject(),
   host: config.prismic.apiEndpoint,
 
@@ -40,6 +40,7 @@ export default DS.RESTAdapter.extend({
   fetchLinkRequestParams(store, type) {
     let fetchLinks = []
 
+    /* Get all the fields */
     type.eachRelationship(relationship => {
       let model = store.modelFactoryFor(relationship);
       if (model && model.class) {
@@ -52,7 +53,6 @@ export default DS.RESTAdapter.extend({
     type.eachAttribute(attribute => {
       fetchLinks.push(`${underscore(type.modelName)}.${underscore(attribute)}`)
     });
-
     return fetchLinks;
   },
 

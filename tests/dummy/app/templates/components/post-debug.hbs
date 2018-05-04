@@ -13,7 +13,7 @@
         {{#if (eq slice.sliceType 'text')}}
           {{prismic-html slice.primary.text}}
         {{else if (eq slice.sliceType 'recommended_posts')}}
-          {{#each slice.items as |item|}}
+          {{#each slice.repeatable as |item|}}
             {{link-to item.title 'post' item.uid}}
           {{/each}}
         {{else}}

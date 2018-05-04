@@ -2,10 +2,10 @@ let json = {
   "id": "WonolyMAACMA4fjz",
   "uid": "development-has-started",
   "type": "post",
-  "href": "https://ember-data-prismic.prismic.io/api/v2/documents/search?ref=Wpc9UykAABgtxl2e&q=%5B%5B%3Ad+%3D+at%28document.id%2C+%22WonolyMAACMA4fjz%22%29+%5D%5D",
+  "href": "https://ember-data-prismic.cdn.prismic.io/api/v2/documents/search?ref=WpwAkCEAAEiuVOpk&q=%5B%5B%3Ad+%3D+at%28document.id%2C+%22WonolyMAACMA4fjz%22%29+%5D%5D",
   "tags": [],
   "first_publication_date": "2018-02-18T20:56:59+0000",
-  "last_publication_date": "2018-02-28T23:37:55+0000",
+  "last_publication_date": "2018-03-04T00:57:25+0000",
   "slugs": [
     "development-has-started-on-ember-data-prismic"
   ],
@@ -57,7 +57,7 @@ let json = {
           },
           "alt": null,
           "copyright": null,
-          "url": "https://prismic-io.s3.amazonaws.com/ember-data-prismic/74c46efb30e6b34f6df57b6b1311b6a9c63ba2cb_1097827_10103663654997894_1679383270_o.jpg"
+          "url": "https://ember-data-prismic.cdn.prismic.io/ember-data-prismic/74c46efb30e6b34f6df57b6b1311b6a9c63ba2cb_1097827_10103663654997894_1679383270_o.jpg"
         }
       },
       "link_type": "Document",
@@ -93,6 +93,19 @@ let json = {
         }
       },
       {
+        "slice_type": "map",
+        "slice_label": null,
+        "items": [
+          {}
+        ],
+        "primary": {
+          "pin": {
+            "latitude": 30.2657392842738,
+            "longitude": -97.75659441947937
+          }
+        }
+      },
+      {
         "slice_type": "recommended_posts",
         "slice_label": null,
         "items": [
@@ -104,18 +117,26 @@ let json = {
               "slug": "this-is-another-thing-you-should-read",
               "lang": "en-us",
               "uid": "this-is-another-thing-you-should-read",
+              "data": {
+                "date": "2018-02-22",
+                "title": "This is another thing you should read"
+              },
               "link_type": "Document",
               "isBroken": false
             }
           },
           {
             "recommended_post": {
-              "id": "WonolyMAACMA4fjz",
+              "id": "WptEWSEAAEiuUa6A",
               "type": "post",
               "tags": [],
-              "slug": "development-has-started-on-ember-data-prismic",
+              "slug": "hot-development-tips",
               "lang": "en-us",
-              "uid": "development-has-started",
+              "uid": "you-wont-believe-these-hot-tips",
+              "data": {
+                "date": "2018-03-03",
+                "title": "Hot development tips"
+              },
               "link_type": "Document",
               "isBroken": false
             }

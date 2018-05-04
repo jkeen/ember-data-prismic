@@ -38,6 +38,10 @@ let json = {
               "lang": "en-us",
               "uid": "this-is-a-cool-song",
               "link_type": "Document",
+              "data": {
+                "title": "this is a cool song",
+                "date": "2018-04-02"
+              },
               "isBroken": false
             }
           }

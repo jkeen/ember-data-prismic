@@ -7,7 +7,7 @@ import { get } from '@ember/object';
 import { copy } from '@ember/object/internals';
 import { isNone, typeOf } from '@ember/utils';
 
-export default DS.JSONSerializer.extend({
+export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
   keyForAttribute(key, /* relationship, method */) {
     return underscore(key);
   },
@@ -101,7 +101,6 @@ export default DS.JSONSerializer.extend({
     let fieldData = this.modelFieldData(modelClass, resourceHash)
     let relationships = {};
     let relationshipHash = this.extractDocumentLinks(fieldData) || {};
-
     modelClass.eachRelationship((key, relationshipMeta) => {
       let relationshipKey = this.keyForRelationship(key, relationshipMeta.kind, 'deserialize');
       if (relationshipMeta.options.polymorphic) {
@@ -109,9 +108,14 @@ export default DS.JSONSerializer.extend({
         Object.keys(relationshipHash).map(k => {
           allRelated = allRelated.concat(relationshipHash[k]);
         });
+        // console.log('allrelated:');
+        // console.log(allRelated);
+        // console.log(resourceHash);
         relationships[key] = {
           data: this.extractRelationship(key, allRelated, resourceHash)
         };
+        // console.log('extraction:');
+        // console.log(relationships[key]);
       }
       else {
         if (relationshipHash[relationshipKey] !== undefined) {
@@ -121,18 +125,29 @@ export default DS.JSONSerializer.extend({
         }
       }
     });
+    // console.log(relationships);
+    // debugger
 
     return relationships;
   },
 
 
   extractRelationship(relationshipModelName, relationshipHash, objectData) {
+    console.group(`${relationshipModelName} extraction`);
+    console.log(relationshipHash);
+    console.log(objectData);
+
+    let hash;
+
     if (isNone(relationshipHash)) {
-      return null;
+      console.log('-none');
+      hash = null;
     }
     if (typeOf(relationshipHash) === 'object') {
+      console.log('-object');
+
       var modelClass = this.store.modelFor(relationshipModelName);
-      return {
+      hash = {
         id: this.objectId(relationshipHash),
         type: modelClass.modelName,
         attributes: this.extractAttributes(modelClass, relationshipHash),
@@ -140,34 +155,59 @@ export default DS.JSONSerializer.extend({
       }
     }
     else if (typeOf(relationshipHash) === 'array') {
-      if (this.isSliceData(relationshipHash)) {
-        return relationshipHash.map((slice, index) => {
-          var modelClass = this.store.modelFor('prismic-document-slice');
+      console.log('-array');
 
-          return {
+      if (this.isSliceData(relationshipHash)) {
+        console.log('-slice data');
+
+        hash = relationshipHash.map((slice, index) => {
+          var modelClass = this.store.modelFor('prismic-document-slice');
+          console.log(slice);
+          console.log(`modelClass: ${modelClass.modelName}`);
+
+          let relationships = this.extractRelationships(modelClass, slice);
+          let a = {
             id: `${this.objectId(objectData)}_s${index}`,
             type: modelClass.modelName,
             attributes: this.extractAttributes(modelClass, slice),
             relationships: this.extractRelationships(modelClass, slice)
           }
+          // console.log('ok');
+          // console.log(a);
+          return a
         })
       }
       else {
-        return relationshipHash.map(object => {
+        console.log('-not slice');
+        console.log(`relhash: ${JSON.stringify(relationshipHash)}`);
+        hash = relationshipHash.map(object => {
           var modelClass = this.modelFromPrismicType(object.type);
-
-          return {
+          let ret = {
             id: this.objectId(object),
             type: modelClass.modelName,
             attributes: this.extractAttributes(modelClass, object),
             relationships: this.extractRelationships(modelClass, object)
           }
+
+          console.log(`id: ${ret.id}`);
+          console.log(`type: ${ret.type}`);
+          console.log(`attrs: ${JSON.stringify(ret.attributes)}`);
+          console.log(`rels: ${JSON.stringify(ret.relationships)}`);
+
+          console.log(ret);
+          return ret;
         });
       }
     }
+    console.log(JSON.stringify(hash));
+    console.log(hash);
+    console.groupEnd()
+
+    return hash
   },
 
   normalize(modelClass, resourceHash) {
+    debugger
     let data = null;
     if (resourceHash) {
       data = {
