@@ -1,5 +1,5 @@
 # Ember Data Adapter For Prismic CMS
-This is an ember data adapter for the V2 Prismic CMS. There are many incomplete projects trying to get ember to integrate easily into Prismic. This one actually works and is actually being used and developed
+This is an ember data adapter for the V2 Prismic CMS. There are many incomplete projects trying to get ember to integrate easily into Prismic. This one actually works and is actually being used and developed.
 
 # Usage
 
@@ -44,6 +44,17 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
   {{prismic-html model.description}} // displays html
   {{prismic-text model.description}} // converts the rich text to text
 
+
+
+  {{#each model.slices as |slice|}}
+
+    {{#if slice.sliceType == 'text'}}
+
+
+    {{/if}}
+
+  {{/each}}
+
 ```
 
 ##### Routes
@@ -56,7 +67,7 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 
   // routes/post.js
   model(params) {
-    return this.store.queryRecord('post', {uid: params.post_id});
+    return this.store.findRecord('post', params.post_id);
   },
 
   afterModel(model /*, transition */) {
