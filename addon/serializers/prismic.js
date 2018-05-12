@@ -1,417 +1,171 @@
-import DS from 'ember-data';
-import { A } from '@ember/array';
-import { underscore } from '@ember/string' ;
-import { assign } from '@ember/polyfills';
-import { isArray, makeArray } from '@ember/array';
-import { get } from '@ember/object';
+import DS from "ember-data";
+import { underscore } from "@ember/string";
+import { isArray } from "@ember/array";
 import { copy } from '@ember/object/internals';
-import { isNone, typeOf } from '@ember/utils';
+import { assign } from "@ember/polyfills";
+import { get, set } from '@ember/object';
+import { A } from '@ember/array';
+import {
+  getOwner,
+  coerceId
+} from 'ember-data/-private';
 
 export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
-  keyForAttribute(key, /* relationship, method */) {
+  primaryKey: "uid",
+
+  keyForAttribute(key /* relationship, method */) {
     return underscore(key);
   },
+  //
+  // extractId(modelClass, resourceHash) {
+  //   let primaryKey = get(this, 'primaryKey');
+  //   let id = resourceHash[primaryKey];
+  //   return coerceId(id);
+  // },
 
-  modelFromPrismicType(type) {
-    if (this.store._hasModelFor(type)) {
-      return this.store.modelFor(type);
+  /* Prismic's payload includes attributes at a top level, and
+    other attributes under a `data` attribute. We want them all
+    on one level, so this recursively so we get embedded/related
+    models */
+  _collapseDataAttributes(payload) {
+    if (typeof payload === "object") {
+      if (isArray(payload)) {
+        payload = payload.map(key => {
+          return this._collapseDataAttributes(key);
+        });
+      } else if (payload) {
+        if (payload.id && payload.data) {
+          payload = assign(payload, payload.data);
+          delete payload.data;
+        }
+
+        Object.keys(payload).forEach(key => {
+          payload[key] = this._collapseDataAttributes(payload[key]);
+        });
+      }
     }
-    else {
-      return this.store.modelFor('prismic-document');
-    }
+
+    return payload;
   },
 
-  objectId(object) {
-    return object.uid || object.id;
+  normalizeResponse(/* ,store, primaryModelClass  payload */) {
+    // set attributes for embedded?
+    return this._super(...arguments);
   },
 
-  extractAttributes(modelClass, objHash) {
-    let attributeKey;
-    let attributes = {};
+  normalizeSingleResponse(store, primaryModelClass, payload, id, requestType) {
+    let results = this._super(
+      store,
+      primaryModelClass,
+      this._collapseDataAttributes(copy(payload)),
+      id,
+      requestType
+    );
+    console.log(results);
 
-    let userFields = this.modelFieldData(modelClass, objHash);
-    let systemFields = this.systemFieldData(objHash)
+    return results;
+  },
 
-    modelClass.eachAttribute((key) => {
-      attributeKey = this.keyForAttribute(key, 'deserialize');
+  normalizeArrayResponse(store, primaryModelClass, payload, id, requestType) {
+    let results = this._super(
+      store,
+      primaryModelClass,
+      this._collapseDataAttributes(copy(payload.results)),
+      id,
+      requestType
+    );
+    console.log(results);
 
-      // These are the user defined fields
-      if (userFields && userFields.hasOwnProperty(attributeKey)) {
-        let attributeValue = userFields[attributeKey];
-        // if (typeOf(attributeValue) === 'object') {
-        //   attributeValue = attributeValue.value;
-        // }
-        attributes[key] = attributeValue;
-      }
-      else if (systemFields && systemFields[attributeKey]) {
-        let attributeValue = systemFields[attributeKey];
-        // if (typeOf(attributeValue) === 'object') {
-        //   attributeValue = attributeValue.value;
-        // }
-        attributes[key] = attributeValue;
-      }
-    });
+    return results;
+  },
 
-    attributes['recordId'] = systemFields['id'];
+  normalize(modelClass, resourceHash) {
+    let attributes = this._super(...arguments);
+
+    if (attributes && get(attributes, 'data') && !get(attributes, 'data.type')) {
+      set(attributes, 'data.type', resourceHash['record_type']);
+    }
 
     return attributes;
   },
 
-  modelHasAttributeOrRelationshipNamedType(modelClass) {
-    return get(modelClass, 'attributes').has('type') || get(modelClass, 'relationshipsByName').has('type');
-  },
-
-  extractDocumentLinks(fieldData) {
-    let relationshipHash = {}
-    A(Object.keys(fieldData)).map(key => {
-      if (get(fieldData, `${key}.link_type`) === 'Document' && get(fieldData, `${key}.id`)) {
-        relationshipHash[key] = get(fieldData, key);
-      }
-      else if (key === 'body' && this.isSliceData(get(fieldData, key))) {
-        relationshipHash[this.keyForRelationship(key)] = get(fieldData, key);
-      }
-    });
-
-    if (this.isSlice(fieldData)) {
-      fieldData.items.map(item => {
-        A(Object.keys(item)).map(key => {
-          if (get(item, `${key}.link_type`) === 'Document' && get(item, `${key}.id`)) {
-            if (!relationshipHash[key]) {
-              relationshipHash[key] = A();
-            }
-            relationshipHash[key].push(get(item, key));
-          }
-        });
-      });
-
-      A(Object.keys(fieldData.primary)).map(key => {
-        if (get(fieldData.primary, `${key}.link_type`) === 'Document') {
-          if (!relationshipHash[key]) {
-            relationshipHash[key] = A();
-          }
-          relationshipHash[key].push(get(fieldData.primary, key));
-        }
-      });
-    }
-
-    return relationshipHash;
-  },
-
-  extractRelationships(modelClass, resourceHash) {
-    let fieldData = this.modelFieldData(modelClass, resourceHash)
-    let relationships = {};
-    let relationshipHash = this.extractDocumentLinks(fieldData) || {};
-    modelClass.eachRelationship((key, relationshipMeta) => {
-      let relationshipKey = this.keyForRelationship(key, relationshipMeta.kind, 'deserialize');
-      if (relationshipMeta.options.polymorphic) {
-        let allRelated = [];
-        Object.keys(relationshipHash).map(k => {
-          allRelated = allRelated.concat(relationshipHash[k]);
-        });
-        // console.log('allrelated:');
-        // console.log(allRelated);
-        // console.log(resourceHash);
-        relationships[key] = {
-          data: this.extractRelationship(key, allRelated, resourceHash)
-        };
-        // console.log('extraction:');
-        // console.log(relationships[key]);
-      }
-      else {
-        if (relationshipHash[relationshipKey] !== undefined) {
-          relationships[key] = {
-            data: this.extractRelationship(key, relationshipHash[relationshipKey], resourceHash)
-          };
-        }
-      }
-    });
-    // console.log(relationships);
-    // debugger
-
-    return relationships;
-  },
-
-
-  extractRelationship(relationshipModelName, relationshipHash, objectData) {
-    console.group(`${relationshipModelName} extraction`);
-    console.log(relationshipHash);
-    console.log(objectData);
-
-    let hash;
-
-    if (isNone(relationshipHash)) {
-      console.log('-none');
-      hash = null;
-    }
-    if (typeOf(relationshipHash) === 'object') {
-      console.log('-object');
-
-      var modelClass = this.store.modelFor(relationshipModelName);
-      hash = {
-        id: this.objectId(relationshipHash),
-        type: modelClass.modelName,
-        attributes: this.extractAttributes(modelClass, relationshipHash),
-        relationships: this.extractRelationships(modelClass, relationshipHash)
-      }
-    }
-    else if (typeOf(relationshipHash) === 'array') {
-      console.log('-array');
-
-      if (this.isSliceData(relationshipHash)) {
-        console.log('-slice data');
-
-        hash = relationshipHash.map((slice, index) => {
-          var modelClass = this.store.modelFor('prismic-document-slice');
-          console.log(slice);
-          console.log(`modelClass: ${modelClass.modelName}`);
-
-          let relationships = this.extractRelationships(modelClass, slice);
-          let a = {
-            id: `${this.objectId(objectData)}_s${index}`,
-            type: modelClass.modelName,
-            attributes: this.extractAttributes(modelClass, slice),
-            relationships: this.extractRelationships(modelClass, slice)
-          }
-          // console.log('ok');
-          // console.log(a);
-          return a
-        })
-      }
-      else {
-        console.log('-not slice');
-        console.log(`relhash: ${JSON.stringify(relationshipHash)}`);
-        hash = relationshipHash.map(object => {
-          var modelClass = this.modelFromPrismicType(object.type);
-          let ret = {
-            id: this.objectId(object),
-            type: modelClass.modelName,
-            attributes: this.extractAttributes(modelClass, object),
-            relationships: this.extractRelationships(modelClass, object)
-          }
-
-          console.log(`id: ${ret.id}`);
-          console.log(`type: ${ret.type}`);
-          console.log(`attrs: ${JSON.stringify(ret.attributes)}`);
-          console.log(`rels: ${JSON.stringify(ret.relationships)}`);
-
-          console.log(ret);
-          return ret;
-        });
-      }
-    }
-    console.log(JSON.stringify(hash));
-    console.log(hash);
-    console.groupEnd()
-
-    return hash
-  },
-
-  normalize(modelClass, resourceHash) {
-    debugger
-    let data = null;
-    if (resourceHash) {
-      data = {
-        id: this.objectId(resourceHash),
-        type: resourceHash.type,
-        attributes: this.extractAttributes(modelClass, resourceHash),
-        relationships: this.extractRelationships(modelClass, resourceHash)
-      };
-
-      this.applyTransforms(modelClass, data.attributes);
-    }
-
-    return { data };
-  },
-
-  isSlice(resource) {
-
-    let keys = Object.keys(resource)
-
-    return keys.includes('slice_type') && keys.includes('slice_label');
-  },
-
-  isSliceData(resources) {
-    return (isArray(resources) && resources.length > 0 && resources[0].slice_type !== undefined)
-  },
-
-  modelFieldData(modelClass, resourceHash) {
-    if (resourceHash && resourceHash.data) {
-      return resourceHash.data;
-    }
-    else if (modelClass.modelName == 'prismic-document-slice') {
-      return resourceHash;
-    }
-    else {
-      return {};
-    }
-  },
-
-  systemFieldData(resourceHash) {
-    let systemData = {}
-    assign(systemData, resourceHash);
-    delete systemData['data'];
-    return systemData
-  },
-
-  normalizeResponse(store, primaryModelClass, payload, id, requestType) {
-    switch (requestType) {
-      case 'findRecord':
-        return this.normalizeFindRecordResponse(...arguments);
-      case 'queryRecord':
-        return this.normalizeQueryRecordResponse(...arguments);
-      case 'findAll':
-        return this.normalizeFindAllResponse(...arguments);
-      case 'findBelongsTo':
-        return this.normalizeFindBelongsToResponse(...arguments);
-      case 'findHasMany':
-        return this.normalizeFindHasManyResponse(...arguments);
-      case 'findMany':
-        return this.normalizeFindManyResponse(...arguments);
-      case 'query':
-        return this.normalizeQueryResponse(...arguments);
-      default:
-        return null;
-    }
-  },
-
-  normalizeFindRecordResponse() {
-    return this.normalizeSingleResponse(...arguments);
-  },
-
-  normalizeQueryRecordResponse(store, primaryModelClass, payload, id, requestType) {
-    let singlePayload = null;
-    if (parseInt(payload.results_size) > 0) {
-      singlePayload = payload.results[0];
-    }
-    return this.normalizeSingleResponse(store, primaryModelClass, singlePayload, id, requestType);
-  },
-
-  normalizeFindAllResponse() {
-    return this.normalizeArrayResponse(...arguments);
-  },
-
-  normalizeFindBelongsToResponse() {
-    return this.normalizeSingleResponse(...arguments);
-  },
-
-  normalizeFindHasManyResponse() {
-    return this.normalizeArrayResponse(...arguments);
-  },
-
-  normalizeFindManyResponse() {
-    return this.normalizeArrayResponse(...arguments);
-  },
-
-  normalizeQueryResponse() {
-    return this.normalizeArrayResponse(...arguments);
-  },
-
-  normalizeSingleResponse(store, primaryModelClass, payload /* id, requestType */) {
-    let normalizedData = this.normalize(primaryModelClass, payload).data;
-    let formatted      = this.formatResponseData(normalizedData);
-
-    return formatted;
-  },
-
-  normalizeArrayResponse(store, primaryModelClass, payload /* id, requestType */ ) {
-    let data = [];
-    var included = []
-
-    payload.results.map((item) => {
-      let normalizedData = this.normalize(primaryModelClass, item).data;
-      let formatted      = this.formatResponseData(normalizedData);
-      data.push(formatted.data);
-      included = included.concat(formatted.included)
-    });
-
-    let response =  {
-      data: data,
-      included: included,
-      meta: this.extractMeta(store, primaryModelClass, payload)
-    };
-
-    return response;
-  },
-
-  /**
-    @method extractMeta
-    @param {DS.Store} store
-    @param {DS.Model} modelClass
-    @param {Object} payload
-    @return {Object} { total: Integer, limit: Integer, skip: Integer }
-  **/
-  extractMeta(store, modelClass, payload) {
-    if (payload) {
-      let meta = {};
-      if (payload.hasOwnProperty('results_per_page')) {
-        meta.page_size = payload.results_per_page;
-      }
-      if (payload.hasOwnProperty('page')) {
-        meta.page = payload.page;
-      }
-      if (payload.hasOwnProperty('total_pages')) {
-        meta.page_total = payload.total_pages;
-      }
-      if (payload.hasOwnProperty('total_results_size')) {
-        meta.total = payload.total_results_size;
-      }
-      return meta;
-    }
-  },
-
-  _nestedRelationships(resourceHash) {
-    let relationships    = resourceHash.relationships || {};
-    let relationshipKeys = Object.keys(relationships);
-    if (relationshipKeys.length === 0) return [];
-
-    let records = []
-    relationshipKeys.map(key => {
-      makeArray(relationships[key].data).forEach(record => records.push(assign({}, record)));
-    });
-
-    return records;
-  },
-
-  extractIncludes(resourceHash, included = []) {
-    this._nestedRelationships(resourceHash).forEach(relationship => {
-      this.extractIncludes(relationship, included);
-
-      included.push(relationship);
-    });
-
-    return included;
-  },
-
-  removeAttributes(resourceHash, nested) {
-    let relationships = resourceHash.relationships;
-    let relationshipKeys = Object.keys(relationships);
-    relationshipKeys.map(key => {
-      let records = makeArray(relationships[key].data);
-
-      records.forEach(record => {
-        this.removeAttributes(record, true);
-      });
-    });
-
-    if (nested) {
-       delete resourceHash.attributes;
-       delete resourceHash.relationships;
-    }
+  modifyDocumentAttributes(resourceHash) {
+    resourceHash['type']        = resourceHash['type'];
+    resourceHash['record_id']   = resourceHash['id']
+    resourceHash['record_type'] = resourceHash['type'];
+    resourceHash['id']          = resourceHash[get(this, 'primaryKey')];
 
     return resourceHash;
   },
 
-  formatResponseData(normalizedData) {
-    /* given an normalized data hash, return {
-      data: [passed in data without 'attributes' in relationships]
-      included: [flattened array of all nested relationships]
-    } */
-    let data = this.removeAttributes(copy(normalizedData, true));
-    let included = this.extractIncludes(normalizedData).map(include => this.removeAttributes(include));
+  extractAttributes(modelClass, resourceHash) {
+    let attributes = this._super(...arguments);
 
-    return {
-      data,
-      included
-    };
+    attributes['recordId']   = resourceHash['id']
+    attributes['recordType'] = resourceHash['type']
+    return attributes;
+  },
+
+  extractRelationships(modelClass, resourceHash) {
+    var relationships = this._super(modelClass, resourceHash);
+    let references    = this.extractDocumentLinks(resourceHash)
+    set(relationships, 'references', { data: references });
+
+    return relationships;
+  },
+
+  extractDocumentLinks(resourceHash) {
+    let references = [];
+
+    A(get(resourceHash, 'body')).forEach(slice => {
+      A(get(slice, 'items')).concat(get(slice,'primary')).forEach(item => {
+        Object.keys(item).forEach(key => {
+          if (get(item, `${key}.link_type`) === 'Document' && get(item, `${key}.id`)) {
+            let attrs = get(item, key);
+
+            references.push(this.modifyDocumentAttributes(attrs));
+          }
+        })
+      });
+    });
+
+    return references;
+  },
+
+  extractRelationship(/* modelClass, relationshipHash */) {
+    let relationship = this._super(...arguments);
+    if (
+      Object.keys(relationship).length === 1 &&
+      relationship["link_type"] == "Document"
+    ) {
+      // If a relationship exists but is not connected on a prismic model it will just have a single link_type attribute in the payload. This isn't enough and
+
+      return null;
+    } else {
+      return relationship;
+    }
+  },
+
+  extractMeta(store, modelClass, payload) {
+    if (payload) {
+      let meta = {};
+      if (payload.hasOwnProperty("results_per_page")) {
+        meta.page_size = payload.results_per_page;
+        delete payload.results_per_page;
+      }
+      if (payload.hasOwnProperty("page")) {
+        meta.page = payload.page;
+        delete payload.page;
+      }
+      if (payload.hasOwnProperty("total_pages")) {
+        meta.page_total = payload.total_pages;
+        delete payload.page_total;
+      }
+      if (payload.hasOwnProperty("total_results_size")) {
+        meta.total = payload.total_results_size;
+        delete payload.total;
+      }
+      return meta;
+    }
   }
 });

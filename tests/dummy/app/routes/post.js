@@ -6,6 +6,6 @@ export default Route.extend({
   },
 
   afterModel(model /*, transition */) {
-    this.transitionTo('post', model.get('id'));
+    this.transitionTo('post', model.get('uid'));
   }
 });
