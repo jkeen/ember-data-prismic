@@ -1,5 +1,6 @@
 import { module, test } from 'qunit';
 import { setupTest } from 'ember-qunit';
+import Prismic from 'prismic-javascript';
 
 module('Unit | Adapter | prismic', function(hooks) {
   setupTest(hooks);

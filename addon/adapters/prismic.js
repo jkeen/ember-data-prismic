@@ -4,11 +4,14 @@ import { inject } from '@ember/service';
 import { get } from '@ember/object';
 import Prismic from 'prismic-javascript';
 import { underscore } from '@ember/string';
-// import fetch from 'fetch';
+import fetch from 'fetch';
+import { assign } from '@ember/polyfills';
+import { computed } from '@ember/object';
 
 export default DS.JSONAPIAdapter.extend({
   prismic: inject(),
   host: config.prismic.apiEndpoint,
+  defaultSerializer: 'prismic',
 
   init() {
     this._super(...arguments);
@@ -16,8 +19,6 @@ export default DS.JSONAPIAdapter.extend({
       throw "ember-data-prismic only supports V2 of the prismic API"
     }
   },
-
-  defaultSerializer: 'prismic',
 
   /**
     @method createRecord
@@ -53,6 +54,7 @@ export default DS.JSONAPIAdapter.extend({
     type.eachAttribute(attribute => {
       fetchLinks.push(`${underscore(type.modelName)}.${underscore(attribute)}`)
     });
+
     return fetchLinks;
   },
 
@@ -71,20 +73,24 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   findRecord(store, type, id) {
-    return get(this, 'prismic').getApi(this.host).then(api => {
-      return api.getByUID(type.modelName, id, {
-        fetchLinks: this.fetchLinkRequestParams(store, type)
-      }).then((post) => {
-        if (post) {
-          return post;
-        }
-        else {
-          return api.getByID(id, {
+    return this._prismicQuery([
+      Prismic.Predicates.at('document.type', type.modelName),
+      Prismic.Predicates.at(`my.${type.modelName}.uid`, id)
+    ], {
+      fetchLinks: this.fetchLinkRequestParams(store, type)
+    }).then(post => {
+      if (post) {
+        return post;
+      }
+      else {
+        return this._prismicQuery([
+          Prismic.Predicates.at('document.type', type.modelName),
+          Prismic.Predicates.at(`document.id`, id)
+        ], {
             fetchLinks: this.fetchLinkRequestParams(store, type)
           });
-        }
-      });
-    });
+      }
+    })
   },
 
   /**
@@ -101,13 +107,11 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   findAll(store, type) {
-    return get(this, 'prismic').getApi(this.host).then(api => {
-      return api.query([
-        Prismic.Predicates.at('document.type', type.modelName),
-      ], {
+    return this._prismicQuery([
+      Prismic.Predicates.at('document.type', type.modelName)
+    ], {
         fetchLinks: this.fetchLinkRequestParams(store, type)
       });
-    });
   },
 
   /**
@@ -128,11 +132,7 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   query(store, type /*, query */) {
-    return get(this, 'prismic').getApi(this.host).then(api => {
-      return api.query([
-        Prismic.Predicates.at('document.type', type.modelName)
-      ]);
-    })
+    return this.findAll(store, type);
   },
 
   /**
@@ -153,13 +153,62 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   queryRecord(store, type, query) {
-    return get(this, 'prismic').getApi(this.host).then(api => {
-      return api.query([
-        Prismic.Predicates.at(`my.${type.modelName}.uid`, query.uid),
-        Prismic.Predicates.at('document.type', type.modelName)
+    return this._prismicQuery([
+      Prismic.Predicates.at('document.type', type.modelName),
+      Prismic.Predicates.at(`my.${type.modelName}.uid`, query.uid)
       ], {
         fetchLinks: this.fetchLinkRequestParams(store, type)
       });
-    })
   },
+
+  _prismicQuery(predicates, options) {
+    let baseUrl = [`${this.host}`, 'documents/search'].join("/");
+
+    let query =[
+      this._predicatesToQuery(predicates),
+      `access_token=${config.prismic.accessToken}`,
+      `ref=${config.prismic.ref}`,
+      `fetchLinks=${options.fetchLinks}`
+    ].join("&")
+
+    return fetch(`${baseUrl}?${query}`)
+      .then(this._checkStatus)
+      .then((response) => {
+        return response.json()
+      });
+  },
+
+  _predicatesToQuery(predicates) {
+    let predicateQuery = predicates.map(pred => {
+      return `q=${encodeURIComponent(`[${pred}]`)}`
+    }).join("&")
+
+    return predicateQuery;
+  },
+
+  _checkStatus(response) {
+    if (response.status >= 200 && response.status < 300) {
+      return response
+    } else {
+      var error = new Error(response.statusText)
+      error.response = response
+      throw error
+    }
+  },
+
+  _toQueryParams(obj, prefix) {
+    var str = [],
+      p;
+    for (p in obj) {
+      if (obj.hasOwnProperty(p)) {
+        var k = prefix ? prefix : p,
+          v = obj[p];
+        str.push((v !== null && typeof v === "object") ?
+          this._toQueryParams(v, k) :
+          encodeURIComponent(k) + "=" + encodeURIComponent(v));
+      }
+    }
+    return str.join("&");
+  }
+
 });

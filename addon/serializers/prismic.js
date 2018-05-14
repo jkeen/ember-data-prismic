@@ -5,23 +5,20 @@ import { copy } from '@ember/object/internals';
 import { assign } from "@ember/polyfills";
 import { get, set } from '@ember/object';
 import { A } from '@ember/array';
-import {
-  getOwner,
-  coerceId
-} from 'ember-data/-private';
+import { coerceId } from 'ember-data/-private';
 
 export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
-  primaryKey: "uid",
-
   keyForAttribute(key /* relationship, method */) {
     return underscore(key);
   },
-  //
-  // extractId(modelClass, resourceHash) {
-  //   let primaryKey = get(this, 'primaryKey');
-  //   let id = resourceHash[primaryKey];
-  //   return coerceId(id);
-  // },
+
+  primaryKey(resourceHash) {
+    return (resourceHash['uid'] || resourceHash['id'])
+  },
+
+  extractId(modelClass, resourceHash) {
+    return coerceId(this.primaryKey(resourceHash));
+  },
 
   /* Prismic's payload includes attributes at a top level, and
     other attributes under a `data` attribute. We want them all
@@ -57,11 +54,10 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     let results = this._super(
       store,
       primaryModelClass,
-      this._collapseDataAttributes(copy(payload)),
+      this._collapseDataAttributes(copy(A(payload.results)[0])),
       id,
       requestType
     );
-    console.log(results);
 
     return results;
   },
@@ -74,7 +70,6 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
       id,
       requestType
     );
-    console.log(results);
 
     return results;
   },
@@ -93,7 +88,7 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     resourceHash['type']        = resourceHash['type'];
     resourceHash['record_id']   = resourceHash['id']
     resourceHash['record_type'] = resourceHash['type'];
-    resourceHash['id']          = resourceHash[get(this, 'primaryKey')];
+    resourceHash['id']          = this.primaryKey(resourceHash);
 
     return resourceHash;
   },

@@ -4,6 +4,7 @@ import { hasMany, belongsTo } from 'ember-data/relationships';
 import { A } from '@ember/array';
 import { computed } from '@ember/object';
 import Slice from './prismic-document-slice';
+import { getWithDefault } from '@ember/object';
 
 export default Model.extend({
   recordId            : attr('string'),
@@ -17,7 +18,7 @@ export default Model.extend({
   body                : attr(),
   linkedDocuments     : attr(),
   slices              : computed('body', function() {
-    return A(this.body).map(data => {
+    return A(getWithDefault(this, 'body', [])).map(data => {
       let slice = Slice.create({
         sliceType: data.slice_type,
         sliceLabel: data.slice_label
