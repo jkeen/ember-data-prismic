@@ -10,6 +10,8 @@ export default DS.JSONAPIAdapter.extend({
   host: config.prismic.apiEndpoint,
   defaultSerializer: 'prismic',
 
+  coalesceFindRequests: true,
+
   init() {
     this._super(...arguments);
     if (!this.host.includes('api/v2')) {
@@ -89,6 +91,27 @@ export default DS.JSONAPIAdapter.extend({
     ], {
         fetchLinks: this.fetchLinkRequestParams(store, type)
       });
+  },
+
+  findMany(store, type, ids) {
+    return this.prismicQuery([
+      Prismic.Predicates.at('document.type', type.modelName),
+      Prismic.Predicates.any(`my.${type.modelName}.uid`, ids)
+    ], {
+      fetchLinks: this.fetchLinkRequestParams(store, type)
+    }).then(posts => {
+      if (posts) {
+        return posts;
+      }
+      else {
+        return this.prismicQuery([
+          Prismic.Predicates.at('document.type', type.modelName),
+          Prismic.Predicates.any(`document.id`, ids)
+        ], {
+            fetchLinks: this.fetchLinkRequestParams(store, type)
+          });
+      }
+    });
   },
 
   /**
