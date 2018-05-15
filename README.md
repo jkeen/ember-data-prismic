@@ -87,9 +87,13 @@ The Data Adapter's primary key is set to 'uid', so if your prismic model has a U
 ```
 
 ## Still to do
-1. Make a generator to create a prismic backed model, along with the ids inherited and a comment of the inherited fields
+- Pagination support
 
-2. Make the slices real models that the adapter inserts into the store. Maybe by default if the slice on prismic is named "gallery", the data adapter will automatically look for a model called "prismic-slice-gallery"?
+- Advanced queries
+
+- Make a generator to create a prismic backed model, along with the ids inherited and a comment of the inherited fields
+
+- Make the slices real models that the adapter inserts into the store. Maybe by default if the slice on prismic is named "gallery", the data adapter will automatically look for a model called "prismic-slice-gallery"?
 
 ------------------------------------------------------------------------------
 
