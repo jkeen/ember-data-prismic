@@ -13,8 +13,6 @@ import singlePostWithSliceReferencingPost from '../../helpers/responses/single-p
 import singlePostWithSliceReferencingUnknown from '../../helpers/responses/single-post-with-slice-referencing-unknown';
 import allPosts from '../../helpers/responses/all-posts';
 import { getOwner } from '@ember/application';
-// import { run } from '@ember/runloop';
-import { A } from '@ember/array';
 
 var Post, Author;
 // let env, store, adapter, serializer;
@@ -71,7 +69,7 @@ test('normalize with single Post payload', async function(assert) {
   let serializer = this.store().serializerFor('post');
 
   let singlePost = singlePostWithAuthor;
-  let normalizedPost = serializer.normalizeSingleResponse(this.store(), this.store().modelFor('post'), singlePost);
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), this.store().modelFor('post'), {"results": [singlePost]});
 
   assert.equal(get(normalizedPost, 'data.attributes.title'), singlePost.data.title, "titles should be the same");
   assert.equal(get(normalizedPost, 'data.id'), singlePost.uid, "id should be the uid");
@@ -86,7 +84,7 @@ test('author is an embedded relationship', function(assert) {
   let serializer = this.store().serializerFor('post');
   let postResponse = singlePostWithAuthor;
 
-  let normalizedPost = serializer.normalizeResponse(this.store(), this.store().modelFor('post'), postResponse, 'development-has-started', 'findRecord');
+  let normalizedPost = serializer.normalizeResponse(this.store(), this.store().modelFor('post'), {results: [postResponse]}, 'development-has-started', 'findRecord');
 
   let author = normalizedPost.data.relationships.author.data;
   assert.equal(author.type, postResponse.data.author.type, 'type should be');
@@ -115,7 +113,7 @@ test('document linked within a slice should be included as relationship', functi
 
   let serializer = this.store().serializerFor('post');
   let post = singlePostWithSliceReferencingPost;
-  let normalizedPost = serializer.normalizeSingleResponse(this.store(), this.store().modelFor('post'), post);
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), this.store().modelFor('post'), {results: [post]});
   assert.equal(get(normalizedPost, 'data.relationships.references.data').length, 2, "relationships to posts should be listed");
 });
 
@@ -129,6 +127,6 @@ test('unknown document linked within a slice should be included as relationship'
 
   let serializer = this.store().serializerFor('post');
   let post = singlePostWithSliceReferencingUnknown;
-  let normalizedPost = serializer.normalizeSingleResponse(this.store(), this.store().modelFor('post'), post);
+  let normalizedPost = serializer.normalizeSingleResponse(this.store(), this.store().modelFor('post'), {results: [post]});
   assert.equal(get(normalizedPost, 'data.relationships.references.data').length, 1, "relationships to posts should be listed");
 });

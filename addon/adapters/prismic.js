@@ -164,7 +164,6 @@ export default DS.JSONAPIAdapter.extend({
     return fetchLinks;
   },
 
-
   async prismicQuery(predicates, options) {
     let url   = [`${this.host}`, 'documents/search'].join("/");
     let ref   = await this.getMasterRef()

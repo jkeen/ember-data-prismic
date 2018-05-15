@@ -12,37 +12,8 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     return underscore(key);
   },
 
-  primaryKey(resourceHash) {
-    return (resourceHash['uid'] || resourceHash['id'])
-  },
-
   extractId(modelClass, resourceHash) {
     return coerceId(this.primaryKey(resourceHash));
-  },
-
-  /* Prismic's payload includes attributes at a top level, and
-    other attributes under a `data` attribute. We want them all
-    on one level, so this recursively so we get embedded/related
-    models */
-  _collapseDataAttributes(payload) {
-    if (typeof payload === "object") {
-      if (isArray(payload)) {
-        payload = payload.map(key => {
-          return this._collapseDataAttributes(key);
-        });
-      } else if (payload) {
-        if (payload.id && payload.data) {
-          payload = assign(payload, payload.data);
-          delete payload.data;
-        }
-
-        Object.keys(payload).forEach(key => {
-          payload[key] = this._collapseDataAttributes(payload[key]);
-        });
-      }
-    }
-
-    return payload;
   },
 
   normalizeResponse(/* ,store, primaryModelClass  payload */) {
@@ -84,15 +55,6 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     return attributes;
   },
 
-  modifyDocumentAttributes(resourceHash) {
-    resourceHash['type']        = resourceHash['type'];
-    resourceHash['record_id']   = resourceHash['id']
-    resourceHash['record_type'] = resourceHash['type'];
-    resourceHash['id']          = this.primaryKey(resourceHash);
-
-    return resourceHash;
-  },
-
   extractAttributes(modelClass, resourceHash) {
     let attributes = this._super(...arguments);
 
@@ -107,24 +69,6 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     set(relationships, 'references', { data: references });
 
     return relationships;
-  },
-
-  extractDocumentLinks(resourceHash) {
-    let references = [];
-
-    A(get(resourceHash, 'body')).forEach(slice => {
-      A(get(slice, 'items')).concat(get(slice,'primary')).forEach(item => {
-        Object.keys(item).forEach(key => {
-          if (get(item, `${key}.link_type`) === 'Document' && get(item, `${key}.id`)) {
-            let attrs = get(item, key);
-
-            references.push(this.modifyDocumentAttributes(attrs));
-          }
-        })
-      });
-    });
-
-    return references;
   },
 
   extractRelationship(/* modelClass, relationshipHash */) {
@@ -162,5 +106,62 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
       }
       return meta;
     }
+  },
+
+  primaryKey(resourceHash) {
+    return (resourceHash['uid'] || resourceHash['id'])
+  },
+
+  modifyDocumentAttributes(resourceHash) {
+    resourceHash['type']        = resourceHash['type'];
+    resourceHash['record_id']   = resourceHash['id']
+    resourceHash['record_type'] = resourceHash['type'];
+    resourceHash['id']          = this.primaryKey(resourceHash);
+
+    return resourceHash;
+  },
+
+  extractDocumentLinks(resourceHash) {
+    let references = [];
+
+    A(get(resourceHash, 'body')).forEach(slice => {
+      A(get(slice, 'items')).concat(get(slice,'primary')).forEach(item => {
+        Object.keys(item).forEach(key => {
+          if (get(item, `${key}.link_type`) === 'Document' && get(item, `${key}.id`)) {
+            let attrs = get(item, key);
+
+            references.push(this.modifyDocumentAttributes(attrs));
+          }
+        })
+      });
+    });
+
+    return references;
+  },
+
+  /* Prismic's payload includes attributes at a top level, and
+    other attributes under a `data` attribute. We want them all
+    on one level, so this recursively so we get embedded/related
+    models */
+  _collapseDataAttributes(payload) {
+    if (typeof payload === "object") {
+      if (isArray(payload)) {
+        payload = payload.map(key => {
+          return this._collapseDataAttributes(key);
+        });
+      } else if (payload) {
+        if (payload.id && payload.data) {
+          payload = assign(payload, payload.data);
+          delete payload.data;
+        }
+
+        Object.keys(payload).forEach(key => {
+          payload[key] = this._collapseDataAttributes(payload[key]);
+        });
+      }
+    }
+
+    return payload;
   }
+
 });
