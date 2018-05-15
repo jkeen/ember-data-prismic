@@ -1,5 +1,5 @@
 # Ember Data Adapter For Prismic CMS
-This is an ember data adapter for the V2 Prismic CMS. There are many incomplete projects trying to get ember to integrate easily into Prismic. This one actually works and is actually being used and developed.
+This is an ember data adapter for the V2 Prismic CMS. There are many incomplete ember/prismic addons trying to get ember to integrate easily into Prismic and none of them seemed to do the job. This one actually works and is being used and developed on multiple projects. Get in touch if you've got problems.
 
 # Usage
 
@@ -28,11 +28,25 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 ```javascript
 
   //models/example.js
-
   import PrismicDocument from 'ember-data-prismic/models/prismic-document';
   import attr from 'ember-data/attr';
+
+  // PrismicDocument contains these fields
+
+  // recordId            : attr('string'),
+  // recordType          : attr('string'),
+  // uid                 : attr('string'),
+  // tags                : attr(),
+  // slugs               : attr(),
+  // alternateLanguages  : attr(),
+  // firstPublicationDate: attr('date'),
+  // lastPublicationDate : attr('date'),
+  // body                : attr(),
+  // linkedDocuments     : attr(),
+  // slices // computed field of slice objects
+
   export default PrismicDocument.extend({
-    // your fields
+    // your prismic model fields
     date: attr('date') // a prismic date field
     description: attr() // this keeps a prismic object in tact so we can use our template helpers for displaying HTML or text
   });
@@ -45,14 +59,10 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
   {{prismic-text model.description}} // converts the rich text to text
 
 
-
   {{#each model.slices as |slice|}}
-
     {{#if slice.sliceType == 'text'}}
 
-
     {{/if}}
-
   {{/each}}
 
 ```
@@ -64,7 +74,6 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 
   this.route('post', {path: "post/:post_id"});
 
-
   // routes/post.js
   model(params) {
     return this.store.findRecord('post', params.post_id);
@@ -74,6 +83,11 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
     this.transitionTo('post', model.get('id')); // this will transition to the correct url
   }
 ```
+
+## Still to do
+1. Make a generator to create a prismic backed model, along with the ids inherited and a comment of the inherited fields
+
+2. Make the slices real models that the adapter inserts into the store. Maybe by default if the slice on prismic is named "gallery", the data adapter will automatically look for a model called "prismic-slice-gallery"?
 
 ------------------------------------------------------------------------------
 

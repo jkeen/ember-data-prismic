@@ -1,12 +1,9 @@
 import DS from 'ember-data';
 import config from 'ember-get-config';
 import { inject } from '@ember/service';
-import { get } from '@ember/object';
 import Prismic from 'prismic-javascript';
 import { underscore } from '@ember/string';
 import fetch from 'fetch';
-import { assign } from '@ember/polyfills';
-import { computed } from '@ember/object';
 
 export default DS.JSONAPIAdapter.extend({
   prismic: inject(),
@@ -38,26 +35,6 @@ export default DS.JSONAPIAdapter.extend({
   */
   deleteRecord: null,
 
-  fetchLinkRequestParams(store, type) {
-    let fetchLinks = []
-
-    /* Get all the fields */
-    type.eachRelationship(relationship => {
-      let model = store.modelFactoryFor(relationship);
-      if (model && model.class) {
-        model.class.eachAttribute(attribute => {
-          fetchLinks.push(`${underscore(relationship)}.${underscore(attribute)}`)
-        })
-      }
-    });
-
-    type.eachAttribute(attribute => {
-      fetchLinks.push(`${underscore(type.modelName)}.${underscore(attribute)}`)
-    });
-
-    return fetchLinks;
-  },
-
   /**
     Called by the store in order to fetch the JSON for a given
     type and ID. This is the
@@ -73,7 +50,7 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   findRecord(store, type, id) {
-    return this._prismicQuery([
+    return this.prismicQuery([
       Prismic.Predicates.at('document.type', type.modelName),
       Prismic.Predicates.at(`my.${type.modelName}.uid`, id)
     ], {
@@ -83,7 +60,7 @@ export default DS.JSONAPIAdapter.extend({
         return post;
       }
       else {
-        return this._prismicQuery([
+        return this.prismicQuery([
           Prismic.Predicates.at('document.type', type.modelName),
           Prismic.Predicates.at(`document.id`, id)
         ], {
@@ -107,7 +84,7 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   findAll(store, type) {
-    return this._prismicQuery([
+    return this.prismicQuery([
       Prismic.Predicates.at('document.type', type.modelName)
     ], {
         fetchLinks: this.fetchLinkRequestParams(store, type)
@@ -153,7 +130,7 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   queryRecord(store, type, query) {
-    return this._prismicQuery([
+    return this.prismicQuery([
       Prismic.Predicates.at('document.type', type.modelName),
       Prismic.Predicates.at(`my.${type.modelName}.uid`, query.uid)
       ], {
@@ -161,32 +138,62 @@ export default DS.JSONAPIAdapter.extend({
       });
   },
 
-  _prismicQuery(predicates, options) {
-    let baseUrl = [`${this.host}`, 'documents/search'].join("/");
+  /* ----------------------------------------------------------------------------- */
+  /*
+    Prismic doesn't include the full response unless you tell it what to include
+    So let's look through our models so we get related data on the first go
+  */
 
-    let query =[
-      this._predicatesToQuery(predicates),
+  fetchLinkRequestParams(store, type) {
+    let fetchLinks = []
+
+    /* Get all the fields */
+    type.eachRelationship(relationship => {
+      let model = store.modelFactoryFor(relationship);
+      if (model && model.class) {
+        model.class.eachAttribute(attribute => {
+          fetchLinks.push(`${underscore(relationship)}.${underscore(attribute)}`)
+        })
+      }
+    });
+
+    type.eachAttribute(attribute => {
+      fetchLinks.push(`${underscore(type.modelName)}.${underscore(attribute)}`)
+    });
+
+    return fetchLinks;
+  },
+
+
+  async prismicQuery(predicates, options) {
+    let url   = [`${this.host}`, 'documents/search'].join("/");
+    let ref   = await this.getMasterRef()
+
+    let query = [
+      this.predicatesToQuery(predicates),
       `access_token=${config.prismic.accessToken}`,
-      `ref=${config.prismic.ref}`,
+      `ref=${ref}`,
       `fetchLinks=${options.fetchLinks}`
     ].join("&")
 
-    return fetch(`${baseUrl}?${query}`)
-      .then(this._checkStatus)
+    return fetch(`${url}?${query}`)
+      .then(this.checkStatus)
       .then((response) => {
         return response.json()
       });
   },
 
-  _predicatesToQuery(predicates) {
-    let predicateQuery = predicates.map(pred => {
-      return `q=${encodeURIComponent(`[${pred}]`)}`
-    }).join("&")
-
-    return predicateQuery;
+  async getMasterRef() {
+    let api    = await fetch(this.host).then(r => r.json())
+    let master = api.refs.filter(r => r.isMasterRef)[0]
+    return master.ref;
   },
 
-  _checkStatus(response) {
+  predicatesToQuery(predicates) {
+    return predicates.map(p => `q=${encodeURIComponent(`[${p}]`)}`).join("&")
+  },
+
+  checkStatus(response) {
     if (response.status >= 200 && response.status < 300) {
       return response
     } else {
@@ -194,21 +201,5 @@ export default DS.JSONAPIAdapter.extend({
       error.response = response
       throw error
     }
-  },
-
-  _toQueryParams(obj, prefix) {
-    var str = [],
-      p;
-    for (p in obj) {
-      if (obj.hasOwnProperty(p)) {
-        var k = prefix ? prefix : p,
-          v = obj[p];
-        str.push((v !== null && typeof v === "object") ?
-          this._toQueryParams(v, k) :
-          encodeURIComponent(k) + "=" + encodeURIComponent(v));
-      }
-    }
-    return str.join("&");
   }
-
 });
