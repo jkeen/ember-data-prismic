@@ -93,6 +93,9 @@ export default DS.JSONAPIAdapter.extend({
       });
   },
 
+  /**
+    This is called when getting related records
+  **/
   findMany(store, type, ids) {
     return this.prismicQuery([
       Prismic.Predicates.at('document.type', type.modelName),
@@ -132,6 +135,9 @@ export default DS.JSONAPIAdapter.extend({
     @public
   */
   query(store, type /*, query */) {
+    /* TODO accept prismic predicates */
+
+
     return this.findAll(store, type);
   },
 

@@ -13,7 +13,7 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
   prismic: {
     apiEndpoint: YOUR_PRISMIC_API_ENDPOINT, // Make sure this is the v2 API url
     accessToken: YOUR_PRISMIC_ACCESS_TOKEN
-  },
+  }
 ```
 
 ##### Adapter
@@ -67,7 +67,9 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 
 ```
 
-##### Routes
+##### Routes and URLS
+
+The Data Adapter's primary key is set to 'uid', so if your prismic model has a UID that's what will request the record and what the model's id will be set to. If `findRecord` doesn't find anything by looking for the UID, it will request by the internal prismic id.
 
 ```javascript
   //router.js
@@ -80,7 +82,7 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
   },
 
   afterModel(model /*, transition */) {
-    this.transitionTo('post', model.get('id')); // this will transition to the correct url
+    this.transitionTo('post', model.get('id')); // if there are multiple slugs this will transition to the correct url (the UID)
   }
 ```
 
