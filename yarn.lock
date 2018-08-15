@@ -2558,12 +2558,6 @@ elliptic@^6.0.0:
     minimalistic-assert "^1.0.0"
     minimalistic-crypto-utils "^1.0.0"
 
-ember-ajax@^3.0.0:
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/ember-ajax/-/ember-ajax-3.1.0.tgz#3db36e67357ef447639517656aeac4bb13e73a9c"
-  dependencies:
-    ember-cli-babel "^6.6.0"
-
 ember-auto-import@^1.2.9:
   version "1.2.9"
   resolved "https://registry.yarnpkg.com/ember-auto-import/-/ember-auto-import-1.2.9.tgz#040eb865fc0d2640e9fac6e3dadc9b1833ec541f"
