@@ -1,17 +1,16 @@
 import DS from 'ember-data';
 import config from 'ember-get-config';
-import { inject } from '@ember/service';
 import Prismic from 'prismic-javascript';
 import { underscore } from '@ember/string';
 import fetch from 'fetch';
+import { inject as service } from '@ember/service';
 
 export default DS.JSONAPIAdapter.extend({
-  prismic: inject(),
+  prismic: service(),
   host: config.prismic.apiEndpoint,
   defaultSerializer: 'prismic',
-
+  cookies: service(),
   coalesceFindRequests: true,
-
   init() {
     this._super(...arguments);
     if (!this.host.includes('api/v2')) {
@@ -58,7 +57,7 @@ export default DS.JSONAPIAdapter.extend({
     ], {
       fetchLinks: this.fetchLinkRequestParams(store, type)
     }).then(post => {
-      if (post) {
+      if (post && post.results_size > 0) {
         return post;
       }
       else {
@@ -67,6 +66,8 @@ export default DS.JSONAPIAdapter.extend({
           Prismic.Predicates.at(`document.id`, id)
         ], {
             fetchLinks: this.fetchLinkRequestParams(store, type)
+          }).then(post => {
+            return post;
           });
       }
     })
@@ -195,7 +196,7 @@ export default DS.JSONAPIAdapter.extend({
 
   async prismicQuery(predicates, options) {
     let url   = [`${this.host}`, 'documents/search'].join("/");
-    let ref   = await this.getMasterRef()
+    let ref   = await this.getRef()
 
     let query = [
       this.predicatesToQuery(predicates),
@@ -211,10 +212,16 @@ export default DS.JSONAPIAdapter.extend({
       });
   },
 
-  async getMasterRef() {
-    let api    = await fetch(this.host).then(r => r.json())
-    let master = api.refs.filter(r => r.isMasterRef)[0]
-    return master.ref;
+  async getRef() {
+    let previewRef = this.get('cookies').read(Prismic.previewCookie);
+    if (previewRef) {
+      return previewRef;
+    }
+    else {
+      let api    = await fetch(this.host).then(r => r.json())
+      let master = api.refs.filter(r => r.isMasterRef)[0]
+      return master.ref;
+    }
   },
 
   predicatesToQuery(predicates) {
