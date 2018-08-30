@@ -1,6 +1,6 @@
 {
   "name": "ember-data-prismic",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Ember Data adapter for the Prismic API",
   "keywords": [
     "ember-addon"
