@@ -1,7 +1,7 @@
 import DS from "ember-data";
 import { underscore } from "@ember/string";
 import { isArray } from "@ember/array";
-import { copy } from '@ember/object/internals';
+import { copy } from 'ember-copy';
 import { assign } from "@ember/polyfills";
 import { get, set } from '@ember/object';
 import { A } from '@ember/array';
