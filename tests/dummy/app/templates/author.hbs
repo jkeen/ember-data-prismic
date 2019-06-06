@@ -1,6 +1,6 @@
 <div class="author">
   <h2 class="author-name">{{model.name}}</h2>
-  <img class="author-photo" src="{{model.photo.url}}" width={{model.photo.dimensions.width}} height={{model.photo.dimensions.height}} alt="">
+  <img class="author-photo" src={{model.photo.url}} width={{model.photo.dimensions.width}} height={{model.photo.dimensions.height}} alt="">
   <div class="author-bio">
     {{prismic-html model.bio}}
 

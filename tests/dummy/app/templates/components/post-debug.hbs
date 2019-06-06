@@ -1,22 +1,23 @@
 <div class="post">
-  <h2 class="post-title">{{link-to post.title 'post' post}}</h2>
+  <h2 class="post-title">{{link-to post.title "post" post}}</h2>
   {{#if post.author}}
-  <div class="post-byline">
-    {{#with post.author as |author|}}
-      by {{link-to author.firstName 'author' author}}
-    {{/with}}
-  </div>
+    <div class="post-byline">
+      {{#with post.author as |author|}}
+        by {{link-to author.firstName "author" author}}
+      {{/with}}
+    </div>
   {{/if}}
   <div class="post-body">
-    {{#each post.slices as |slice index|}}
+    {{#each post.slices as |slice|}}
       <div class="post-body-slice" data-slice-type={{slice.sliceType}}>
-        {{#if (eq slice.sliceType 'text')}}
+        {{#if (eq slice.sliceType "text")}}
           {{prismic-html slice.primary.text}}
-        {{else if (eq slice.sliceType 'recommended_posts')}}
+        {{else if (eq slice.sliceType "recommended_posts")}}
           {{#each slice.repeatable as |item|}}
-            {{link-to item.title 'post' item.uid}}
+            {{link-to item.title "post" item.uid}}
           {{/each}}
         {{else}}
+
         {{/if}}
 
         <div class="post-body-slice-raw">
@@ -27,7 +28,7 @@
 
     <div class="post-body-slice-raw post-body-references">
       {{#each post.references as |item|}}
-        {{link-to item.title 'post' item.id}}
+        {{link-to item.title "post" item.id}}
       {{/each}}
     </div>
   </div>

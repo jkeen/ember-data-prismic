@@ -37,14 +37,16 @@ module('Integration | Helper | prismic-html', function(hooks) {
 
     await render(hbs`{{prismic-html inputValue}}`);
     assert.equal(this.element.querySelector('a').href, 'https://prismic.io/');
-    assert.equal(this.element.querySelector('em').textContent, 'data');
-    assert.equal(this.element.querySelector('strong').textContent, 'adapter');
-    assert.equal(this.element.textContent.trim(), 'Jeff wrote this addon after being frustrated with not having a data adapter for prismic. He knew Prismic was a little funky in the way it operated compared to other data sources, but still felt that having a data adapter would be great.');
+    assert.dom(this.element.querySelector('em')).hasText('data');
+    assert.dom(this.element.querySelector('strong')).hasText('adapter');
+    assert.dom(this.element).hasText(
+      'Jeff wrote this addon after being frustrated with not having a data adapter for prismic. He knew Prismic was a little funky in the way it operated compared to other data sources, but still felt that having a data adapter would be great.'
+    );
   });
 
   test('it renders without content', async function(assert) {
     this.set('inputValue', null);
     await render(hbs`{{prismic-html inputValue}}`);
-    assert.equal(this.element.textContent.trim(), '');
+    assert.dom(this.element).hasText('');
   });
 });

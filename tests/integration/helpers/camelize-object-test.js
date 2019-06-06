@@ -12,6 +12,6 @@ module('Integration | Helper | camelize-object', function(hooks) {
 
     await render(hbs`{{camelize-object inputValue}}`);
 
-    assert.equal(this.element.textContent.trim(), '1234');
+    assert.dom(this.element).hasText('1234');
   });
 });
