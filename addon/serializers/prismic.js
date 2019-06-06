@@ -65,7 +65,7 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
 
   extractRelationships(modelClass, resourceHash) {
     var relationships = this._super(modelClass, resourceHash);
-    let references    = this.extractDocumentLinks(resourceHash)
+    let references    = this._extractDocumentLinks(resourceHash)
     set(relationships, 'references', { data: references });
 
     return relationships;
@@ -112,7 +112,7 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     return (resourceHash['uid'] || resourceHash['id'])
   },
 
-  modifyDocumentAttributes(resourceHash) {
+  _modifyDocumentAttributes(resourceHash) {
     // resourceHash['type']        = resourceHash['type'];
     resourceHash['record_id']   = resourceHash['id']
     resourceHash['record_type'] = resourceHash['type'];
@@ -121,7 +121,7 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
     return resourceHash;
   },
 
-  extractDocumentLinks(resourceHash) {
+  _extractDocumentLinks(resourceHash) {
     let references = [];
 
     A(get(resourceHash, 'body')).forEach(slice => {
@@ -130,7 +130,7 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
           if (get(item, `${key}.link_type`) === 'Document' && get(item, `${key}.id`)) {
             let attrs = get(item, key);
 
-            references.push(this.modifyDocumentAttributes(attrs));
+            references.push(this._modifyDocumentAttributes(attrs));
           }
         })
       });
