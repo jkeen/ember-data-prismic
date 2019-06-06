@@ -178,12 +178,15 @@ export default DS.JSONAPIAdapter.extend({
     let fetchLinks = []
 
     /* Get all the fields */
-    type.eachRelationship((name, descriptor) => {
-      let model = store.modelFor(descriptor.parentModelName);
-      if (model) {
-        model.eachAttribute(attribute => {
-          fetchLinks.push(`${underscore(descriptor.parentModelName)}.${underscore(attribute)}`)
-        })
+    type.eachRelationship((name) => {
+      if (!['parent', 'references'].includes(name)) {
+        let relationshipName = name
+        let model = store.modelFor(relationshipName);
+        if (model) {
+          model.eachAttribute(attribute => {
+            fetchLinks.push(`${underscore(relationshipName)}.${underscore(attribute)}`)
+          })
+        }
       }
     });
 
