@@ -1,7 +1,6 @@
-import { get } from '@ember/object';
-import { computed } from '@ember/object';
 import { A } from '@ember/array';
 import EmberObject from '@ember/object';
+import { get, computed } from '@ember/object';
 
 export default EmberObject.extend({
   repeatable: computed('items', 'parent.references', function() {

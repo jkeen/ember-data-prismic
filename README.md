@@ -60,8 +60,8 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 
 
   {{#each model.slices as |slice|}}
-    {{#if slice.sliceType == 'text'}}
-
+    {{#if (eq slice.sliceType 'text')}}
+      {{prismic-html slice.textBody}}
     {{/if}}
   {{/each}}
 

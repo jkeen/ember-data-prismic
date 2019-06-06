@@ -113,7 +113,7 @@ export default DS.JSONSerializer.extend(DS.EmbeddedRecordsMixin, {
   },
 
   modifyDocumentAttributes(resourceHash) {
-    resourceHash['type']        = resourceHash['type'];
+    // resourceHash['type']        = resourceHash['type'];
     resourceHash['record_id']   = resourceHash['id']
     resourceHash['record_type'] = resourceHash['type'];
     resourceHash['id']          = this.primaryKey(resourceHash);
