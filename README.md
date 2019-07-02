@@ -67,6 +67,22 @@ This is an ember data adapter for the V2 Prismic CMS. There are many incomplete 
 
 ```
 
+##### Resolution of Document Links
+
+Prismic allows you to link to other prismic documents within a rich text field. When that data arrives to ember and is rendered using the `prismic-html` helper, it will try to resolve the link by assuming the document `type` is the same as the name of the route and the id is the `uid` field. This can be overriden if needed by extending the PrismicService in your application
+
+```javascript
+import PrismicService from 'ember-data-prismic/services/prismic';
+
+export default PrismicService.extend({
+  urlFor(doc) {
+    // default: this.router.urlFor(doc.type, doc.uid);
+    // insert your custom logic here
+  }
+});
+
+```
+
 ##### Routes and URLS
 
 The Data Adapter's primary key is set to 'uid', so if your prismic model has a UID that's what will request the record and what the model's id will be set to. If `findRecord` doesn't find anything by looking for the UID, it will request by the internal prismic id.
